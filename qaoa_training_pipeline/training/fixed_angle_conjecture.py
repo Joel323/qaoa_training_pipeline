@@ -68,6 +68,21 @@ class FixedAngleConjecture(BaseTrainer):
             f"Optimization is currently not implemented by {self.__class__.__name__}."
         )
 
+    def rescaling_factor(self, cost_op):
+        n1, n2, terms1, terms2 = 0, 0, 0, 0
+        
+        for p in cost_op:
+            if p.paulis[0].to_label().count("Z") == 1:
+                n1 += 1
+                terms1 += p.coeffs[0] ** 2
+            elif p.paulis[0].to_label().count("Z") == 2:
+                n2 += 1
+                terms2 += p.coeffs[0] ** 2
+            else:
+                raise ValueError("Should not see other terms.")
+        
+        return np.sqrt(terms1/n1 + terms2/n2)
+    
     # pylint: disable=too-many-positional-arguments
     def train(
         self,
@@ -132,6 +147,11 @@ class FixedAngleConjecture(BaseTrainer):
 
         energy = None
         if self._evaluator is not None:
+
+            #Add variable that is passed to select whether there is rescaling or not
+            if True:
+                f1 = self.rescaling_factor(cost_op)
+                cost_op = cost_op * (1/f1)
             energy = self._evaluator.evaluate(
                 cost_op=cost_op,
                 params=angles_data["beta"] + angles_data["gamma"],
