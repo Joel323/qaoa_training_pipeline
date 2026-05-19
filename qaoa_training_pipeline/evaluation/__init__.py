@@ -14,6 +14,7 @@ from .mps_aer import MPSAerEvaluator
 from .mps_evaluator import MPSEvaluator
 from .pauli_propagation import PPEvaluator
 from .statevector_evaluator import StatevectorEvaluator
+from .tn_aer import TNAerEvaluator
 
 
 EVALUATORS = {
@@ -22,5 +23,5 @@ EVALUATORS = {
     "MPSEvaluator": MPSEvaluator,
     "StatevectorEvaluator": StatevectorEvaluator,
     "PPEvaluator": PPEvaluator,
-    "MPSAerEvaluator": MPSAerEvaluator,
+    "TNAerEvaluator": TNAerEvaluator
 }
