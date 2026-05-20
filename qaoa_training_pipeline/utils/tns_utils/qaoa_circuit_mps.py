@@ -16,6 +16,8 @@ from math import sqrt
 from networkx import Graph
 import numpy as np
 
+import autoray as ar
+import cupy as cp
 from quimb.tensor import CircuitMPS, MatrixProductState, tensor_network_gate_inds
 from quimb.tensor.circuit import parse_to_gate
 
@@ -412,6 +414,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         mixer: Optional[QuantumCircuit] = None,
         initial_state: Optional[QuantumCircuit] = None,
         store_intermediate_schmidt_values: bool = False,
+        device: Optional[str] = None
     ):
         """Class constructor
 
@@ -437,8 +440,16 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             store_intermediate_schmidt_values (bool): whether the Schmidt values associated with
                 each application of a two-qubit gate should be stored. Defaults to `False`.
         """
+        if device:
+            ar.set_backend('cupy')
+
         self._mps_representation = CircuitMPS(n_qubits)
         self._canonization_center = 0
+
+        assert isinstance(self._mps_representation.psi, cp.ndarray)
+
+        
+
         super().__init__(
             n_qubits,
             adjacency_matrix,
