@@ -56,6 +56,7 @@ class QAOACircuitTNSRepresentation(ABC):
         mixer: Optional[QuantumCircuit] = None,
         initial_state: Optional[QuantumCircuit] = None,
         store_intermediate_schmidt_values: bool = False,
+        device: Optional[str] = None,
     ):
         """Class initialization.
 
@@ -79,6 +80,8 @@ class QAOACircuitTNSRepresentation(ABC):
             store_intermediate_schmidt_values (bool): whether the Schmidt values associated with
                 each application of a two-qubit gate should be stored. Defaults to `False`.
         """
+        if device:
+            ar.set_backend('cupy')
         self._n_qubits = n_qubits
         self._adj_matrix = adjacency_matrix
         self._threshold = truncation_threshold
@@ -207,8 +210,6 @@ class QAOACircuitTNSRepresentation(ABC):
                 method is that the mixer is made of single-qubit rotations only.
             initial_state: The initial state. This is given to accommodate, e.g., warm-start QAOA.
         """
-        if device:
-            ar.set_backend('cupy')
         n_qubits = max(max(i[0]) for i in list_of_edges) + 1
         adjacency_matrix = np.zeros((n_qubits, n_qubits), dtype=float)
         list_of_higher_order_terms = []
@@ -235,6 +236,7 @@ class QAOACircuitTNSRepresentation(ABC):
             mixer=mixer,
             initial_state=initial_state,
             store_intermediate_schmidt_values=store_intermediate_schmidt_values,
+            device=device
         )
 
     @property
