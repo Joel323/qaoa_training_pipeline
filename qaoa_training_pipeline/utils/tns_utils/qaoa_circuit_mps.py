@@ -17,6 +17,7 @@ from networkx import Graph
 import numpy as np
 
 import autoray as ar
+from pydantic_core.core_schema import none_schema
 import cupy as cp
 from quimb.tensor import CircuitMPS, MatrixProductState, tensor_network_gate_inds
 from quimb.tensor.circuit import parse_to_gate
@@ -187,6 +188,7 @@ class QAOACircuitTNSRepresentation(ABC):
         mixer: Optional[QuantumCircuit] = None,
         initial_state: Optional[QuantumCircuit] = None,
         store_intermediate_schmidt_values: bool = False,
+        device: Optional[str] = None
     ):
         """Constructor taking as input explicitly a list of edges/weight.
 
@@ -205,6 +207,8 @@ class QAOACircuitTNSRepresentation(ABC):
                 method is that the mixer is made of single-qubit rotations only.
             initial_state: The initial state. This is given to accommodate, e.g., warm-start QAOA.
         """
+        if device:
+            ar.set_backend('cupy')
         n_qubits = max(max(i[0]) for i in list_of_edges) + 1
         adjacency_matrix = np.zeros((n_qubits, n_qubits), dtype=float)
         list_of_higher_order_terms = []

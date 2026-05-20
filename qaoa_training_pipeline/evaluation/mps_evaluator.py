@@ -210,6 +210,7 @@ class MPSEvaluator(BaseEvaluator):
             mixer=mixer,  # type: ignore[arg-type]
             initial_state=initial_state,
             store_intermediate_schmidt_values=self._store_intermediate_schmidt_values,
+            device="GPU"
         )
 
         circuit.apply_qaoa_layer(beta_parameters, gamma_parameters)
