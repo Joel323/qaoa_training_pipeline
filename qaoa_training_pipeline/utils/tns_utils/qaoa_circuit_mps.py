@@ -452,7 +452,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         self._mps_representation = CircuitMPS(n_qubits)
         self._canonization_center = 0
 
-        assert isinstance(self._mps_representation.psi, cp.ndarray)
+        assert all(isinstance(t.data, cp.ndarray) for t in self._mps_representation.psi)
 
         
 
