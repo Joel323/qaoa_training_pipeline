@@ -96,11 +96,22 @@ class QAOACostFunction:
         self._truncation = truncation
         self._max_bond = max_bond
 
-    @property
-    def mpo(self):
-        """Return the MPOWrapper of the cost function."""
+    # @property
+    # def mpo(self):
+    #     """Return the MPOWrapper of the cost function with default to_array=False."""
+    #     return self.get_mpo(to_array=False)
+
+    def get_mpo(self, to_array=None):
+        """Return the MPOWrapper of the cost function.
+        
+        Args:
+            to_array (bool): Whether to convert the MPO to array format. Defaults to False.
+            
+        Returns:
+            MPOWrapper: The MPO representation of the cost function.
+        """
         if self._mpo is None:
-            self._mpo = self.return_mpo_representation()
+            self._mpo = self.return_mpo_representation(to_array=to_array)
 
         return self._mpo
 
@@ -166,7 +177,7 @@ class QAOACostFunction:
         for i_terms in new_sparse_pauli.to_list():
             self._symbolic_mpo.add_term(Pauli(i_terms[0][::-1]), i_terms[1])
 
-    def return_mpo_representation_symbolic(self) -> MPOWrapper:
+    def return_mpo_representation_symbolic(self, to_array) -> MPOWrapper:
         """Returns the Matrix Product Operator (MPO) representation of the cost function
         using the symbolic MPO constructor
 
@@ -174,7 +185,7 @@ class QAOACostFunction:
             MPOWrapper: wrapper around the MPO representation of the cost function
         """
 
-        returned_mpo = self._symbolic_mpo.generate_mpo_representation()
+        returned_mpo = self._symbolic_mpo.generate_mpo_representation(to_backend=to_array)
 
         # Final truncation
         if self._truncation is not None:
@@ -185,14 +196,14 @@ class QAOACostFunction:
 
         return MPOWrapper(returned_mpo)
 
-    def return_mpo_representation(self) -> MPOWrapper:
+    def return_mpo_representation(self, to_array) -> MPOWrapper:
         """Returns the Matrix Product Operator (MPO) representation of the cost function
 
         Returns:
             MPOWrapper: wrapper around the MPO representation of the cost function
         """
 
-        return self.return_mpo_representation_symbolic()
+        return self.return_mpo_representation_symbolic(to_array=to_array)
         # NOTE: As noted above, the code here below is kept for back-compatibility.
         # returned_mpo = self._mpo_builder.build_mpo(self._n_qubits)
 

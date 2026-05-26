@@ -36,7 +36,6 @@ from qaoa_training_pipeline.training import TRAINERS
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.utils.problem_classes import PROBLEM_CLASSES
 
-
 def get_script_args():
     """Get the command line input arguments."""
 

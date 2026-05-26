@@ -168,7 +168,7 @@ class SymbolicMPOConstruction:
                 [list_of_chars[positions[pauli_weight - 1]]], [1.0]
             )
 
-    def generate_mpo_representation(self) -> MatrixProductOperator:
+    def generate_mpo_representation(self,to_backend=None) -> MatrixProductOperator:
         """Returns the quimb `MatrixProductOperator` representation of the class.
 
         Remember that the `SymbolicMPOConstruction` stores the MPO representation
@@ -183,6 +183,12 @@ class SymbolicMPOConstruction:
             MatrixProductOperator: actual MPO associated with the symbolic
                 representation stored in this class.
         """
+
+        def create_array(shape, dtype=complex):
+            arr = np.zeros(shape, dtype=dtype)
+            if to_backend is not None:
+                arr = to_backend(arr)
+            return arr
 
         # Creates an empty MPO
         returned_mpo = MatrixProductOperator.new(
@@ -206,27 +212,33 @@ class SymbolicMPOConstruction:
                 map_per_site.append({x: i for i, x in enumerate(row_set)})
 
         # First tensor
-        target_tensor = np.zeros([2, 2, max_bond_dim[1]], dtype=complex)
+        target_tensor = create_array([2, 2, max_bond_dim[1]])
 
         for i_entry, i_op in self._mpo_maps[0].items():
             i_row = map_per_site[0][i_entry[0]]
             i_col = map_per_site[1][i_entry[1]]
             assert i_row == 0
-            target_tensor[:, :, i_col] = i_op.to_matrix()
+            i_op = i_op.to_matrix()
+            if to_backend is not None:
+                i_op = to_backend(i_op)
+            target_tensor[:, :, i_col] = i_op
 
         tensor_to_be_added = Tensor(target_tensor, inds=["b0", "k0", "BD0"], tags=["site0"])
         returned_mpo |= tensor_to_be_added
 
         # Middle tensor
         for i_site in range(1, self._n_sites - 1):
-            target_tensor = np.zeros(
-                [2, 2, max_bond_dim[i_site], max_bond_dim[i_site + 1]], dtype=complex
+            target_tensor = create_array(
+                [2, 2, max_bond_dim[i_site], max_bond_dim[i_site + 1]]
             )
 
             for i_entry, i_op in self._mpo_maps[i_site].items():
                 i_row = map_per_site[i_site][i_entry[0]]
                 i_col = map_per_site[i_site + 1][i_entry[1]]
-                target_tensor[:, :, i_row, i_col] = i_op.to_matrix()
+                matrix = i_op.to_matrix()
+                if to_backend is not None:
+                    matrix = to_backend(matrix)
+                target_tensor[:, :,i_row, i_col] = matrix
 
             tensor_to_be_added = Tensor(
                 target_tensor,
@@ -241,13 +253,16 @@ class SymbolicMPOConstruction:
             returned_mpo |= tensor_to_be_added
 
         # Final tensor
-        target_tensor = np.zeros([2, 2, max_bond_dim[self._n_sites - 1]], dtype=complex)
-
+        target_tensor = create_array([2, 2, max_bond_dim[self._n_sites - 1]])
+        
         for i_entry, i_op in self._mpo_maps[self._n_sites - 1].items():
             i_row = map_per_site[self._n_sites - 1][i_entry[0]]
             i_col = map_per_site[self._n_sites][i_entry[1]]
             assert i_col == 0
-            target_tensor[:, :, i_row] = i_op.to_matrix()
+            matrix = i_op.to_matrix()
+            if to_backend is not None:
+                matrix = to_backend(matrix)
+            target_tensor[:, :, i_row] = matrix
 
         tensor_to_be_added = Tensor(
             target_tensor,

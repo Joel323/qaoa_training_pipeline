@@ -213,22 +213,29 @@ class SATMapper(BasePreprocessor):
                 sol = solver.get_model()
                 # assert isinstance(sol, dict)
                 e_time = solver.time()
-
-                assert sol, "solver from get_model() was undefined"
                 # e_time is sometimes None on concurrency on windows machines so this assert was relaxed
                 if e_time is None:
                     warnings.warn("solver ran without defining e_time", RuntimeWarning)
                     e_time = 0.0
-                assert isinstance(status, bool), "solver status returned with non-boolean value"
+                
+                # solve_limited with expect_interrupt=True can return None when interrupted/timed out
+                # Treat None as unsatisfiable (False) for the binary search
+                if status is None:
+                    print(f"Solver timed out after {e_time:.2f}s at num_layers={num_layers}")
+                    status = False
+                
+                assert isinstance(status, bool), f"solver status should be bool after handling None: {status}"
                 mapping = []
                 if status:
                     # If the SAT problem is satisfiable, convert the solution to a mapping.
+                    # sol should not be None when status is True
+                    assert sol is not None, "solver from get_model() was None when status is True"
                     mapping = [vid2mapping[idx] for idx in sol if idx > 0]
                     max_layers = num_layers
                 else:
-                    # If the SAT problem is unsatisfiable, return the last satisfiable solution.
+                    # If the SAT problem is unsatisfiable or timed out, sol will be None
                     min_layers = num_layers + 1
-                binary_search_results[num_layers] = SATResult(status, sol, mapping, e_time)
+                binary_search_results[num_layers] = SATResult(status, sol if sol else [], mapping, e_time)
 
         return binary_search_results
 
@@ -243,6 +250,12 @@ class SATMapper(BasePreprocessor):
             that was used to find the initial mapping are both stored locally as internal
             variables to the SATMapper. If no solution is found then an error is raised.
         """
+        print("\n=== GRAPH ENTERING SAT ===")
+        print("Nodes:", sorted(graph.nodes()))
+        print("Edges:", sorted(graph.edges()))
+        print("Num nodes:", graph.number_of_nodes())
+        print("Num edges:", graph.number_of_edges())
+        print(nx.is_connected(graph))
         num_nodes = len(graph.nodes)
         results = self.find_initial_mappings(graph, 0, num_nodes - 1)
         solutions = [k for k, v in results.items() if v.satisfiable]
