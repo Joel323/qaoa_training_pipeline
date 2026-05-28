@@ -276,7 +276,9 @@ class QAOACircuitTNSRepresentation(ABC):
             raise KeyError(
                 "Number of qubits of cost function does not match the number of qubits of the circuit"
             )
-        mpo_cost_function = cost_function.get_mpo(to_array=cp.asarray).mpo
+        print(type(cost_function))
+        print(type(cost_function.mpo))
+        mpo_cost_function = cost_function.mpo.mpo
         psi = self.get_underlying_tn()
         psi_dagger = psi.H
         psi_dagger.reindex_(dict(zip(mpo_cost_function.lower_inds, mpo_cost_function.upper_inds)))
@@ -311,17 +313,18 @@ class QAOACircuitTNSRepresentation(ABC):
             betas (List[float]): proportionality term for the mixing factor(s).
             gammas (List[float]): proportionality term for the Hamiltonian evolution(s).
         """
-
+        print("Apply initial layer")
         self._apply_initial_layer()
 
         rep = 1  # determines if even or odd layer.
 
         for gamma_value, beta_value in zip(gammas, betas):
             if self._swap_strat is None:
+                print(f"Apply layer {rep}")
                 self._apply_ansatz_layer(gamma_value)
             else:
                 self._apply_layer_ansatz_swap_strat(gamma_value, rep)
-
+            print(f"Apply mixing layer {rep}")
             self._apply_mixing_layer(beta_value)
 
             rep += 1
@@ -447,10 +450,8 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         self._device = device
 
         if device:
-            ar.set_backend('cupy')
             self._mps_representation = CircuitMPS(n_qubits, to_backend=cp.asarray)
         else:
-            ar.set_backend('numpy')
             self._mps_representation = CircuitMPS(n_qubits)
         self._canonization_center = 0
         
@@ -608,7 +609,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
 
         # OPTIMIZATION A: Use cached coupled pairs instead of rebuilding every layer
         list_of_coupled_pairs = self._cached_coupled_pairs
-
+        print("Apply one local")
         self._apply_one_local(scaling_factor)
 
         # OPTIMIZATION D: Use cached SWAP gate instead of rebuilding
@@ -616,6 +617,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         
         # Pre-build and convert all RZZ gates to avoid repeated conversions in the loop
         # RZZ gates depend on scaling_factor parameter, so must be built per layer
+        print("Pre-building gates")
         rzz_gates = {}
         for i_pairs in list_of_coupled_pairs:
             j_qubit = min(i_pairs[0], i_pairs[1])
@@ -633,23 +635,27 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             # Canonizes wrt the *first* site. Note that the SWAP gates should not
             # influence the canonization (the sites are just swapped back and forth)
 
+            print("Apply swaps")
             for swap_site in range(j_qubit, i_qubit - 1):
                 list_of_schmidt = self._apply_two_qubit_gate(swap_site, swap_gate, False)
                 if self._store_schmidt:
                     self._list_of_schmidt.append(list_of_schmidt)
 
             # Applies the original gate (already converted to GPU)
+            print("Apply two qubit gates zz")
             list_of_schmidt_gate = self._apply_two_qubit_gate(i_qubit - 1, rzz_gates[i_pairs], True)
             if self._store_schmidt:
                 self._list_of_schmidt.append(list_of_schmidt_gate)
 
             # Swaps back
+            print("Swapping back")
             for swap_site in range(i_qubit - 2, j_qubit - 1, -1):
                 list_of_schmidt = self._apply_two_qubit_gate(swap_site, swap_gate, True)
                 if self._store_schmidt:
                     self._list_of_schmidt.append(list_of_schmidt)
 
         # Proceeds to the application of the higher-order terms
+        print("Apply higher order")
         for i_higher_order in self._list_of_hyperedges:
             # Gets the MPO representation of the high-order correlator
             mpo_representation = i_higher_order.get_dense_representation(scaling_factor)

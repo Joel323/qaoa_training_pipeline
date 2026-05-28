@@ -11,6 +11,7 @@
 from math import prod, sqrt
 
 import numpy as np
+import cupy as cp
 from qiskit.circuit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
@@ -153,10 +154,11 @@ class MPSEvaluator(BaseEvaluator):
         """
         if len(params) % 2 != 0:
             raise KeyError("Number of parameters must be an even integer")
-
+        print("Entered evaluation")
         # Must come before the cost_op is permuted by the swap strategy.
         if ansatz_circuit is None:
             edges = operator_to_list_of_hyper_edges(cost_op)
+            print("Creating ansatz circuit")
         elif isinstance(ansatz_circuit, QuantumCircuit):
             qc_graph = circuit_to_graph(ansatz_circuit)
             edges = [([u, v], w.get("weight", 1.0)) for u, v, w in qc_graph.edges(data=True)]
@@ -175,6 +177,7 @@ class MPSEvaluator(BaseEvaluator):
             cost_op.num_qubits
         ), "num_qubits must be defined in cost operator before calling evaluate()"
         if self._use_swap_strategy:
+            print("Using SWAP strategy")
             self._swap_strategy = make_swap_strategy(
                 [tuple(val[0]) for val in edges],
                 cost_op.num_qubits,
@@ -189,7 +192,8 @@ class MPSEvaluator(BaseEvaluator):
                 cost_op = cost_op.apply_layout(permutation)
 
         if self._cost_op is None or not cost_op.equiv(self._cost_op.sparse_pauli):
-            self._cost_op = QAOACostFunction(cost_op, self._threshold_cost, self._max_bond_cost)
+            print("Creating QAOACostFunction")
+            self._cost_op = QAOACostFunction(cost_op, self._threshold_cost, self._max_bond_cost, backend =cp.asarray)
 
         # Construct the circuit
         beta_parameters = list(params[: len(params) // 2])
@@ -201,7 +205,7 @@ class MPSEvaluator(BaseEvaluator):
                 f"Mixer of type {type(mixer).__name__} is not supported. "
                 "Only QuantumCircuit mixers are supported."
             )
-
+        print("Creating QAOACircuitMPSRepresentation")
         circuit = self._circuit_type.construct_from_list_of_edges(
             edges,
             truncation_threshold=self._threshold_circuit,
@@ -212,12 +216,13 @@ class MPSEvaluator(BaseEvaluator):
             store_intermediate_schmidt_values=self._store_intermediate_schmidt_values,
             device="GPU"
         )
-
+        print("Applying layers")
         circuit.apply_qaoa_layer(beta_parameters, gamma_parameters)
 
         if self._store_intermediate_schmidt_values:
             self._intermediate_schmidt_values = circuit.get_intermediate_schmidt_values()
 
+        print("Computing cost function estimate")
         cost_function_estimate = circuit.compute_cost_function(self._cost_op)
 
         # Updates important results

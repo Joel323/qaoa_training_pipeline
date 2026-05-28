@@ -69,7 +69,7 @@ class QAOACostFunction:
         sparse_pauli: SparsePauliOp,
         truncation: Optional[float] = None,
         max_bond: Optional[int] = None,
-        backend: Optional[Callable[[str], None]] = None,
+        backend = None,
     ):
         """Class constructor
 
@@ -90,17 +90,17 @@ class QAOACostFunction:
         self._symbolic_mpo = SymbolicMPOConstruction(self._n_qubits)
         self.add_sparse_pauli_op(sparse_pauli)
 
-        # Lazy construction of the MPO.
-        self._mpo = None
-        if backend:
-            self._mpo = self.return_mpo_representation(to_array=backend)
-
 
         # Parameters for the MPO construction.
         self._truncation = truncation
         self._max_bond = max_bond
 
-    # @property
+        # Lazy construction of the MPO.
+        self._mpo = None
+        if backend:
+            self._mpo = self.return_mpo_representation(to_array=backend)
+
+    @property
     def mpo(self):
         """Return the MPOWrapper of the cost function with default to_array=False."""
         #if self._mpo is None:
