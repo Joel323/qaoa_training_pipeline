@@ -561,6 +561,12 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         if self._device:
             return cp.asarray(array)
         return array
+    
+    def _get_backend_module(self):
+        """Get the appropriate backend module (numpy or cupy)"""
+        if self._device:
+            return cp
+        return np
 
     def _apply_ansatz_layer(self, scaling_factor: float):
         """Applies the circuit ansatz onto the circuit.
@@ -604,17 +610,24 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
 
         self._apply_one_local(scaling_factor)
 
-        # Now loops over the pairs to apply the Z_i Z_j terms and applies them.
+        # Pre-convert SWAP gate once to avoid repeated CPU-GPU transfers
         swap_gate = parse_to_gate("SWAP", 0, 1, ).build_array()
         swap_gate = self._to_backend(swap_gate)
+        
+        # Pre-build and convert all RZZ gates to avoid repeated conversions in the loop
+        rzz_gates = {}
         for i_pairs in list_of_coupled_pairs:
-
+            j_qubit = min(i_pairs[0], i_pairs[1])
+            i_qubit = max(i_pairs[0], i_pairs[1])
+            angle = 2.0 * scaling_factor * self._adj_matrix[i_qubit, j_qubit]
+            rzz_gate = parse_to_gate("RZZ", angle, j_qubit, i_qubit)
+            rzz_gates[i_pairs] = self._to_backend(rzz_gate.array)
+        
+        # Now loops over the pairs to apply the Z_i Z_j terms
+        for i_pairs in list_of_coupled_pairs:
             # Determines the gate
             j_qubit = min(i_pairs[0], i_pairs[1])
             i_qubit = max(i_pairs[0], i_pairs[1])
-            rzz_gate = parse_to_gate(
-                "RZZ", 2.0 * scaling_factor * self._adj_matrix[i_qubit, j_qubit], j_qubit, i_qubit
-            )
 
             # Canonizes wrt the *first* site. Note that the SWAP gates should not
             # influence the canonization (the sites are just swapped back and forth)
@@ -624,8 +637,8 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
                 if self._store_schmidt:
                     self._list_of_schmidt.append(list_of_schmidt)
 
-            # Applies the original gate
-            list_of_schmidt_gate = self._apply_two_qubit_gate(i_qubit - 1, self._to_backend(rzz_gate.array), True)
+            # Applies the original gate (already converted to GPU)
+            list_of_schmidt_gate = self._apply_two_qubit_gate(i_qubit - 1, rzz_gates[i_pairs], True)
             if self._store_schmidt:
                 self._list_of_schmidt.append(list_of_schmidt_gate)
 
@@ -641,7 +654,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             mpo_representation = i_higher_order.get_dense_representation(scaling_factor)
             self._mps_representation.apply_gate_raw(mpo_representation, i_higher_order.i_qubits)
 
-    def _apply_two_qubit_gate(self, i_qubit: int, array: cp.array, absorb_left: bool) -> np.ndarray:
+    def _apply_two_qubit_gate(self, i_qubit: int, array, absorb_left: bool) -> np.ndarray:
         """Applies a two-qubit gate on the circuit.
 
         Note that the two-qubit gate is assumed to be nearest-neighbour,
@@ -669,7 +682,6 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             raise ValueError("Qubit index too large")
 
         # Proceeds to the gate application
-        #input_mps = self._mps_representation.psi.copy()
         psi = self._mps_representation.psi
         psi.shift_orthogonality_center(current=self._canonization_center, new=i_qubit)
         phys_indices = psi.outer_inds()
@@ -691,9 +703,12 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
 
         # We renormalize the S matrix to ensure that the state is normalized even
         # if we neglect non-zero singular values
+        # Use backend-appropriate operations to avoid CPU-GPU transfers
+        xp = self._get_backend_module()
         diagonal_elements = info[("singular_values", aux_indices[i_qubit])]
-        sqrt_normalization = sqrt(sum(i**2 for i in diagonal_elements))
+        sqrt_normalization = xp.sqrt(xp.sum(diagonal_elements**2))
         diagonal_elements_normalized = diagonal_elements / sqrt_normalization
+        
         if absorb_left:
             psi[tensor_indices[i_qubit]].multiply_index_diagonal(
                 aux_indices[i_qubit], diagonal_elements_normalized, inplace=True
@@ -705,8 +720,16 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             )
             self._canonization_center = i_qubit + 1
 
-        # Copies back the MPS
-        self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
+        # Recreate CircuitMPS to ensure consistency
+        # The psi is already on the correct device (GPU/CPU) from in-place modifications
+        # We pass to_backend to ensure future gate operations use the correct backend
+
+        assert all(isinstance(t.data, cp.ndarray) for t in psi) 
+        if self._device:
+            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
+        else:
+            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi)
+        
         return diagonal_elements
 
     def _apply_layer_ansatz_swap_strat(self, scaling_factor: float, rep: int):
