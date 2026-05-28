@@ -8,7 +8,7 @@
 
 """These classes are used to construct the MPO representation of the QAOA cost function."""
 
-from typing import Optional, List, Tuple
+from typing import Callable, Optional, List, Tuple
 
 from qiskit.quantum_info import SparsePauliOp, Pauli
 
@@ -69,6 +69,7 @@ class QAOACostFunction:
         sparse_pauli: SparsePauliOp,
         truncation: Optional[float] = None,
         max_bond: Optional[int] = None,
+        backend: Optional[Callable[[str], None]] = None,
     ):
         """Class constructor
 
@@ -91,29 +92,21 @@ class QAOACostFunction:
 
         # Lazy construction of the MPO.
         self._mpo = None
+        if backend:
+            self._mpo = self.return_mpo_representation(to_array=backend)
+
 
         # Parameters for the MPO construction.
         self._truncation = truncation
         self._max_bond = max_bond
 
     # @property
-    # def mpo(self):
-    #     """Return the MPOWrapper of the cost function with default to_array=False."""
-    #     return self.get_mpo(to_array=False)
-
-    def get_mpo(self, to_array=None):
-        """Return the MPOWrapper of the cost function.
-        
-        Args:
-            to_array (bool): Whether to convert the MPO to array format. Defaults to False.
-            
-        Returns:
-            MPOWrapper: The MPO representation of the cost function.
-        """
-        if self._mpo is None:
-            self._mpo = self.return_mpo_representation(to_array=to_array)
-
+    def mpo(self):
+        """Return the MPOWrapper of the cost function with default to_array=False."""
+        #if self._mpo is None:
+        #    self._mpo = self.return_mpo_representation(to_array=backend)
         return self._mpo
+
 
     def add_sparse_pauli_op(self, new_sparse_pauli: SparsePauliOp) -> None:
         """Adds a new sparse Pauli op to the existing one.

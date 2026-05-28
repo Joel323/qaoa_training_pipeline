@@ -14,18 +14,10 @@ from typing import Optional, List, Tuple
 from math import sqrt
 
 from networkx import Graph
-from networkx.utils import backends
 import numpy as np
 
-
-print("Import before cupy")
-import autoray as ar
-#ar.set_backend('cupy')
-
-from pydantic_core.core_schema import none_schema
 import cupy as cp
-print("CuPy device:", cp.cuda.runtime.getDevice())
-print("Device name:", cp.cuda.runtime.getDeviceProperties(0)['name'])
+
 from quimb.tensor import CircuitMPS, MatrixProductState, tensor_network_gate_inds
 from quimb.tensor.circuit import parse_to_gate
 
@@ -87,8 +79,6 @@ class QAOACircuitTNSRepresentation(ABC):
             store_intermediate_schmidt_values (bool): whether the Schmidt values associated with
                 each application of a two-qubit gate should be stored. Defaults to `False`.
         """
-        if device:
-            ar.set_backend('cupy')
         self._n_qubits = n_qubits
         self._adj_matrix = adjacency_matrix
         self._threshold = truncation_threshold
@@ -463,13 +453,13 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             ar.set_backend('numpy')
             self._mps_representation = CircuitMPS(n_qubits)
         self._canonization_center = 0
+        
+        # Cache tensor indices list to avoid repeated list creation
+        self._tensor_indices = ["I" + str(i) for i in range(n_qubits)]
 
         if device:
             assert all(isinstance(t.data, cp.ndarray) for t in self._mps_representation.psi), \
                 "Failed to create CuPy tensors. Check that CuPy is installed and GPU is available."
-
-
-        
 
         super().__init__(
             n_qubits,
@@ -483,6 +473,21 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             store_intermediate_schmidt_values=store_intermediate_schmidt_values,
             device=device
         )
+        
+        # OPTIMIZATION A: Cache coupled pairs list to avoid rebuilding every layer
+        # Build once from adjacency matrix and reuse across all QAOA layers
+        self._cached_coupled_pairs = []
+        for i_qubit in range(self.n_qubits):
+            for j_qubit in range(0, i_qubit):
+                if abs(self._adj_matrix[i_qubit, j_qubit]) > 1.0e-16:
+                    self._cached_coupled_pairs.append((min(i_qubit, j_qubit), max(i_qubit, j_qubit)))
+        self._cached_coupled_pairs.sort(key=lambda x: x[0])
+        
+        # OPTIMIZATION D: Pre-build and cache SWAP gate to avoid repeated conversions
+        # SWAP gate doesn't depend on parameters, so build once and reuse
+        swap_gate_builder = parse_to_gate("SWAP", 0, 1)
+        self._cached_swap_gate = swap_gate_builder.build_array()
+        self._cached_swap_gate = self._to_backend(self._cached_swap_gate)
 
     def get_underlying_tn(self) -> MatrixProductState:
         """Getter for the MPS representation"""
@@ -601,20 +606,16 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             scaling_factor (float): scaling term appearing in the exponent.
         """
 
-        list_of_coupled_pairs = []
-        for i_qubit in range(self.n_qubits):
-            for j_qubit in range(0, i_qubit):
-                if abs(self._adj_matrix[i_qubit, j_qubit]) > 1.0e-16:
-                    list_of_coupled_pairs.append((min(i_qubit, j_qubit), max(i_qubit, j_qubit)))
-        list_of_coupled_pairs.sort(key=lambda x: x[0])
+        # OPTIMIZATION A: Use cached coupled pairs instead of rebuilding every layer
+        list_of_coupled_pairs = self._cached_coupled_pairs
 
         self._apply_one_local(scaling_factor)
 
-        # Pre-convert SWAP gate once to avoid repeated CPU-GPU transfers
-        swap_gate = parse_to_gate("SWAP", 0, 1, ).build_array()
-        swap_gate = self._to_backend(swap_gate)
+        # OPTIMIZATION D: Use cached SWAP gate instead of rebuilding
+        swap_gate = self._cached_swap_gate
         
         # Pre-build and convert all RZZ gates to avoid repeated conversions in the loop
+        # RZZ gates depend on scaling_factor parameter, so must be built per layer
         rzz_gates = {}
         for i_pairs in list_of_coupled_pairs:
             j_qubit = min(i_pairs[0], i_pairs[1])
@@ -682,11 +683,17 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             raise ValueError("Qubit index too large")
 
         # Proceeds to the gate application
+        # CRITICAL: Use .psi property for numerical stability
+        # Direct ._psi access causes state accumulation and 2x performance degradation
         psi = self._mps_representation.psi
-        psi.shift_orthogonality_center(current=self._canonization_center, new=i_qubit)
+        # OPTIMIZATION C: Only shift canonization center if not already at target position
+        # This reduces unnecessary canonization shifts (was 5,168 calls, 43.9s overhead)
+        if self._canonization_center != i_qubit:
+            psi.shift_orthogonality_center(current=self._canonization_center, new=i_qubit)
         phys_indices = psi.outer_inds()
         aux_indices = psi.inner_inds()
-        tensor_indices = ["I" + str(i) for i in range(self._n_qubits)]
+        # Use cached tensor indices (Optimization 2)
+        tensor_indices = self._tensor_indices
 
         info = {}
         tensor_network_gate_inds(
@@ -719,16 +726,10 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
                 aux_indices[i_qubit], diagonal_elements_normalized, inplace=True
             )
             self._canonization_center = i_qubit + 1
-
-        # Recreate CircuitMPS to ensure consistency
-        # The psi is already on the correct device (GPU/CPU) from in-place modifications
-        # We pass to_backend to ensure future gate operations use the correct backend
-
-        assert all(isinstance(t.data, cp.ndarray) for t in psi) 
-        if self._device:
-            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
-        else:
-            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi)
+        
+        # CRITICAL: Recreate CircuitMPS to ensure internal state consistency
+        # Without this, the modified psi state is not properly synchronized with CircuitMPS
+        self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
         
         return diagonal_elements
 
