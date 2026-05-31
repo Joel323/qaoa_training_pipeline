@@ -8,8 +8,6 @@
 
 """Statevector-based QAOA evaluator."""
 
-from qiskit_aer.primitives import EstimatorV2 as AerEstimator
-
 from qaoa_training_pipeline.evaluation.aer_interface import AerEvaluator
 
 
@@ -41,6 +39,8 @@ class StatevectorEvaluator(AerEvaluator):
                 f"Invalid device '{device}'. Only 'GPU' is supported for device parameter, "
                 "or None/omit for CPU."
             )
+
+        from qiskit_aer.primitives import EstimatorV2 as AerEstimator
 
         estimator = AerEstimator(
             options={

@@ -1,2 +1,5 @@
 # needed for the PauliPropagation energy evaluation
 juliacall
+
+# optional CUDA-Q MPS benchmark backend; requires supported CUDA-Q platform/GPU
+cudaq

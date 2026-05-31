@@ -9,6 +9,7 @@
 """This module collects all the functions to evaluate the energy of a QAOA circuit."""
 
 from .efficient_depth_one import EfficientDepthOneEvaluator
+from .cudaq_mps import CudaQMPSBenchmarkEvaluator
 from .light_cone import LightConeEvaluator
 from .mps_aer import MPSAerEvaluator
 from .mps_evaluator import MPSEvaluator
@@ -18,6 +19,7 @@ from .statevector_evaluator import StatevectorEvaluator
 
 EVALUATORS = {
     "EfficientDepthOneEvaluator": EfficientDepthOneEvaluator,
+    "CudaQMPSBenchmarkEvaluator": CudaQMPSBenchmarkEvaluator,
     "LightConeEvaluator": LightConeEvaluator,
     "MPSEvaluator": MPSEvaluator,
     "StatevectorEvaluator": StatevectorEvaluator,
