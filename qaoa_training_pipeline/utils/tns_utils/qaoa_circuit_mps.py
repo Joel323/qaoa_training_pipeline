@@ -55,7 +55,6 @@ class QAOACircuitTNSRepresentation(ABC):
         mixer: Optional[QuantumCircuit] = None,
         initial_state: Optional[QuantumCircuit] = None,
         store_intermediate_schmidt_values: bool = False,
-        device: Optional[str] = None,
     ):
         """Class initialization.
 
@@ -472,7 +471,6 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             mixer=mixer,
             initial_state=initial_state,
             store_intermediate_schmidt_values=store_intermediate_schmidt_values,
-            device=device
         )
         
         # OPTIMIZATION A: Cache coupled pairs list to avoid rebuilding every layer
@@ -735,7 +733,11 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
         
         # CRITICAL: Recreate CircuitMPS to ensure internal state consistency
         # Without this, the modified psi state is not properly synchronized with CircuitMPS
-        self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
+
+        if self._device:
+            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi, to_backend=cp.asarray)
+        else:
+            self._mps_representation = CircuitMPS(self._n_qubits, psi0=psi)
         
         return diagonal_elements
 
@@ -818,6 +820,8 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
     The advantage of this gauge compared to the "left-right" one is that one does
     not need to shift the canonization center every time a two-qubit gate is applied.
     For this reason, multiple qubits can be applied in parallel.
+
+    Supports both CPU (NumPy) and GPU (CuPy) backends for tensor operations.
     """
 
     # pylint: disable=too-many-positional-arguments
@@ -832,6 +836,7 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
         mixer: Optional[QuantumCircuit] = None,
         initial_state: Optional[QuantumCircuit] = None,
         store_intermediate_schmidt_values: bool = False,
+        device: str = "cpu",
     ):
         """Class initialization.
 
@@ -859,10 +864,22 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
             initial_state: The initial state. This is given to accommodate, e.g., warm-start QAOA.
             store_intermediate_schmidt_values (bool): whether the Schmidt values associated with
                 each application of a two-qubit gate should be stored. Defaults to `False`.
+            device (str): Device to use for tensor operations. Either "cpu" (NumPy) or "cuda" (CuPy).
+                Defaults to "cpu".
+
+        Example:
+            >>> # CPU backend
+            >>> qaoa_cpu = QAOACircuitVidalRepresentation(n_qubits, adj_matrix, device="cpu")
+            >>> # GPU backend
+            >>> qaoa_gpu = QAOACircuitVidalRepresentation(n_qubits, adj_matrix, device="cuda")
         """
 
+        self.device = device
+        # Initialize backend before creating the MPS representation
+        self._set_backend(device)
+
         self._mps_representation = CircuitMPSVidalCanonization.construct_empty_circuit(
-            n_qubits, truncation_threshold, max_bond_dim
+            n_qubits, truncation_threshold, max_bond_dim, device=device
         )
         super().__init__(
             n_qubits,
@@ -875,6 +892,67 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
             initial_state=initial_state,
             store_intermediate_schmidt_values=store_intermediate_schmidt_values,
         )
+        
+        # Convert internal state to the selected backend
+        self._convert_internal_state_to_backend()
+
+    def _set_backend(self, device: str) -> None:
+        """Set the backend (NumPy or CuPy) based on device.
+
+        Args:
+            device (str): Device to use - "cpu" for NumPy, "cuda" for CuPy.
+        """
+        if self.device == "GPU":
+            self.xp = cp
+        elif self.device ==  None:
+            self.xp = np
+        else:
+            raise ValueError(f"Unsupported device: {device}. Use 'cpu' or 'cuda'.")
+
+    def _to_backend(self, array):
+        """Convert array to current backend.
+
+        Args:
+            array: Input array (NumPy or CuPy).
+
+        Returns:
+            Array in the current backend format.
+        """
+        if array is None:
+            return None
+        if self.device == None:
+            if isinstance(array, np.ndarray):
+                return cp.asarray(array)
+            return array
+        else:  # cpu
+            if hasattr(array, 'get'):  # CuPy array
+                return array.get()
+            return np.asarray(array)
+
+    def _to_numpy(self, array):
+        """Convert array to NumPy (for output).
+
+        Args:
+            array: Input array (NumPy or CuPy).
+
+        Returns:
+            NumPy array.
+        """
+        if array is None:
+            return None
+        if hasattr(array, 'get'):  # CuPy array
+            return array.get()
+        return np.asarray(array)
+
+    def _convert_internal_state_to_backend(self) -> None:
+        """Convert all persistent internal arrays to the current backend."""
+        # Convert adjacency matrix (stored in parent class)
+        if hasattr(self, '_adj_matrix') and self._adj_matrix is not None:
+            self._adj_matrix = self._to_backend(self._adj_matrix)
+        
+        # Note: swap_layer_pairs contains tuples of integers, not arrays
+        # list_of_hyperedges contains QAOAManyBodyCorrelator objects
+        # These don't need conversion as they don't contain numerical arrays directly
 
     def get_underlying_tn(self) -> MatrixProductState:
         """Getter for the MPS representation"""
@@ -928,8 +1006,10 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
     def _apply_one_local(self, scaling_factor):
         """Internal helper function to apply one-local terms from the Ansatz."""
         for i_qubit in range(self.n_qubits):
-            if abs(self._adj_matrix[i_qubit, i_qubit]) > 1.0e-16:
-                value = 2.0 * scaling_factor * self._adj_matrix[i_qubit, i_qubit]
+            # Extract scalar value from potentially backend array
+            diag_value = float(self._adj_matrix[i_qubit, i_qubit])
+            if abs(diag_value) > 1.0e-16:
+                value = 2.0 * scaling_factor * diag_value
                 self._mps_representation.apply_rz_gate(i_qubit, value)
 
     def _apply_ansatz_layer(self, scaling_factor: float) -> List[np.ndarray]:
@@ -984,7 +1064,9 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
         list_of_coupled_pairs = []
         for i_qubit in range(self.n_qubits):
             for j_qubit in range(0, i_qubit):
-                if abs(self._adj_matrix[i_qubit, j_qubit]) > 1.0e-16:
+                # Extract scalar value from potentially backend array
+                edge_weight = float(self._adj_matrix[i_qubit, j_qubit])
+                if abs(edge_weight) > 1.0e-16:
                     list_of_coupled_pairs.append((min(i_qubit, j_qubit), max(i_qubit, j_qubit)))
         list_of_coupled_pairs.sort(key=lambda x: x[0])
 
@@ -994,8 +1076,10 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
         for i_pairs in list_of_coupled_pairs:
             j_qubit = i_pairs[0]
             i_qubit = i_pairs[1]
+            # Extract scalar value for angle
+            angle = float(2.0 * scaling_factor * self._adj_matrix[i_qubit, j_qubit])
             list_of_schmidt = self._mps_representation.apply_rzz_gate(
-                j_qubit, i_qubit, 2.0 * scaling_factor * self._adj_matrix[i_qubit, j_qubit]
+                j_qubit, i_qubit, angle
             )
             if self._store_schmidt:
                 self._list_of_schmidt.extend(list_of_schmidt)
@@ -1024,10 +1108,12 @@ class QAOACircuitVidalRepresentation(QAOACircuitTNSRepresentation):
             # 1. Apply the gates.
             for node0, node1 in self._swap_layer_pairs[layer_idx]:
                 tn_j_qubit = min(permutation.index(node0), permutation.index(node1))
-
+                
+                # Extract scalar value for angle
+                angle = float(2.0 * scaling_factor * self._adj_matrix[node0, node1])
                 list_of_schmidt = self._mps_representation.apply_rzz_gate_nn(
                     tn_j_qubit,
-                    2.0 * scaling_factor * self._adj_matrix[node0, node1],
+                    angle,
                 )
                 if self._store_schmidt:
                     self._list_of_schmidt.append(list_of_schmidt)

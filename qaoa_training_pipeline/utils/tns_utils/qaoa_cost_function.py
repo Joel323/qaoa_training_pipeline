@@ -97,8 +97,7 @@ class QAOACostFunction:
 
         # Lazy construction of the MPO.
         self._mpo = None
-        if backend:
-            self._mpo = self.return_mpo_representation(to_array=backend)
+        self._mpo = self.return_mpo_representation(to_array=backend)
 
     @property
     def mpo(self):

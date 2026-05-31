@@ -14,6 +14,12 @@ from math import sqrt, cos, sin
 
 import numpy as np
 
+# Try to import CuPy for GPU support
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
+
 from quimb.tensor import (
     bonds,
     CircuitMPS,
@@ -54,7 +60,7 @@ class CircuitMPSVidalCanonization:
     M tensor on the left.
     """
 
-    # The important gates are saved as static class members.
+    # Static NumPy gate definitions (will be converted to appropriate backend when used)
     _h_gate = np.array([[1.0 / sqrt(2), 1.0 / sqrt(2)], [1.0 / sqrt(2), -1.0 / sqrt(2)]])
 
     # The swap two-qubit gate is expressed as a 2x2x2x2 matrix because
@@ -72,6 +78,7 @@ class CircuitMPSVidalCanonization:
         input_mps: CircuitMPS,
         truncation_threshold: Optional[float] = None,
         max_bond_dim: Optional[int] = None,
+        device: str = "cpu",
     ):
         """Class constructor.
 
@@ -80,7 +87,12 @@ class CircuitMPSVidalCanonization:
                 of the MPS.
             truncation_threshold (Optional[float]): truncation parameter for the SVD
             max_bond_dim (Optional[int]): maximum bond dimension of the MPS
+            device (str): Device to use for computations. Either "cpu" (NumPy) or "gpu" (CuPy).
+                Defaults to "cpu".
         """
+        # Set backend before any operations
+        self._set_backend(device)
+        
         # Storage of input data
         self._truncation_threshold = truncation_threshold
         self._max_bond_dim = max_bond_dim
@@ -114,7 +126,7 @@ class CircuitMPSVidalCanonization:
                 list_of_splitted_indices, absorb=None, get="tensors"
             )
             new_index = s_mat.inds[0]
-            diagonal_tensor = Tensor(np.diag(s_mat.data), inds=[new_index, "BD_tmp"])
+            diagonal_tensor = Tensor(self.xp.diag(s_mat.data), inds=[new_index, "BD_tmp"])
             u_mat = u_mat @ diagonal_tensor
             v_mat = v_mat @ diagonal_tensor
             v_mat.reindex_({"BD_tmp": self._get_bond_label_right(i_qubit + 1)})
@@ -148,12 +160,52 @@ class CircuitMPSVidalCanonization:
             + [item for t in zip(list_of_schmidt_values, list_of_lambdas[1:]) for item in t]
         )
 
+    def _set_backend(self, device: str):
+        """Set the computational backend (CPU or GPU).
+
+        Args:
+            device (str): Device to use. Either "cpu" for NumPy or "gpu" for CuPy.
+
+        Raises:
+            ValueError: If device is not "cpu" or "gpu", or if "gpu" is requested but CuPy is not available.
+        """
+        if device == None:
+            self.device = "cpu"
+            self.xp = np
+        elif device == "GPU":
+            if cp is None:
+                raise ValueError(
+                    "CuPy is not installed. Install it with 'pip install cupy' to use GPU backend."
+                )
+            self.device = "gpu"
+            self.xp = cp
+        else:
+            raise ValueError(f"Unsupported device: {device}. Use 'cpu' or 'gpu'.")
+
+    def _to_backend(self, array):
+        """Convert array to the current backend.
+
+        Args:
+            array: NumPy or CuPy array to convert.
+
+        Returns:
+            Array in the current backend format.
+        """
+        if self.device == "gpu":
+            if isinstance(array, np.ndarray):
+                return cp.asarray(array)
+        elif self.device == "cpu":
+            if cp is not None and isinstance(array, cp.ndarray):
+                return cp.asnumpy(array)
+        return array
+
     @classmethod
     def construct_empty_circuit(
         cls,
         n_qubits: int,
         truncation_threshold: Optional[float] = None,
         max_bond_dim: Optional[int] = None,
+        device: str = "cpu",
     ):
         """Empty class constructor.
 
@@ -163,9 +215,14 @@ class CircuitMPSVidalCanonization:
             n_qubits (int): number of qubits of the circuit
             truncation_threshold (Optional[float]): truncation parameter for the SVD
             max_bond_dim (Optional[int]): maximum bond dimension of the MPS
+            device (str): Device to use for computations. Either "cpu" (NumPy) or "gpu" (CuPy).
+                Defaults to "cpu".
         """
-        empty_circuit = CircuitMPS(n_qubits)
-        return cls(empty_circuit, truncation_threshold, max_bond_dim)
+        if device == "GPU" and cp is not None:
+            empty_circuit = CircuitMPS(n_qubits, to_backend=cp.asarray)
+        else:
+            empty_circuit = CircuitMPS(n_qubits)
+        return cls(empty_circuit, truncation_threshold, max_bond_dim, device)
 
     @staticmethod
     def _x_gate() -> np.ndarray:
@@ -195,42 +252,42 @@ class CircuitMPSVidalCanonization:
         return np.array([[1.0, 0.0], [0.0, -1.0]])
 
     @staticmethod
-    def _rx_gate(theta: float) -> np.array:
+    def _rx_gate(theta: float) -> np.ndarray:
         """Returns the matrix representation of the RX gate
 
         Args:
             theta (float): rotation angle.
 
         Returns:
-            np.array: RX gate as a numpy array.
+            np.ndarray: RX gate as a numpy array.
         """
         return np.array(
             [[cos(theta / 2.0), -1j * sin(theta / 2.0)], [-1j * sin(theta / 2.0), cos(theta / 2.0)]]
         )
 
     @staticmethod
-    def _ry_gate(theta: float) -> np.array:
+    def _ry_gate(theta: float) -> np.ndarray:
         """Returns the matrix representation of the RY gate
 
         Args:
             theta (float): rotation angle.
 
         Returns:
-            np.array: RY gate as a numpy array.
+            np.ndarray: RY gate as a numpy array.
         """
         return np.array(
             [[cos(theta / 2.0), -sin(theta / 2.0)], [sin(theta / 2.0), cos(theta / 2.0)]]
         )
 
     @staticmethod
-    def _rz_gate(theta: float) -> np.array:
+    def _rz_gate(theta: float) -> np.ndarray:
         """Returns the matrix representation of the RZ gate
 
         Args:
             theta (float): rotation angle.
 
         Returns:
-            np.array: RZ gate as a numpy array.
+            np.ndarray: RZ gate as a numpy array.
         """
         return np.array(
             [
@@ -241,14 +298,14 @@ class CircuitMPSVidalCanonization:
         )
 
     @staticmethod
-    def _rzz_gate(theta: float) -> np.array:
+    def _rzz_gate(theta: float) -> np.ndarray:
         """Returns the matrix representation of the RZZ gate
 
         Args:
             theta (float): rotation angle.
 
         Returns:
-            np.array: RZZ gate as a numpy array.
+            np.ndarray: RZZ gate as a numpy array.
         """
         return np.array(
             [
@@ -381,7 +438,8 @@ class CircuitMPSVidalCanonization:
         Args:
             i_qubit (int): index of the qubit on which the gate is applied.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._x_gate(), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._x_gate())
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_y_gate(self, i_qubit: int):
         """Apply a Y gate onto the circuit.
@@ -389,7 +447,8 @@ class CircuitMPSVidalCanonization:
         Args:
             i_qubit (int): index of the qubit on which the gate is applied.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._y_gate(), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._y_gate())
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_z_gate(self, i_qubit: int):
         """Apply a Z gate onto the circuit.
@@ -397,7 +456,8 @@ class CircuitMPSVidalCanonization:
         Args:
             i_qubit (int): index of the qubit on which the gate is applied.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._z_gate(), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._z_gate())
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_rx_gate(self, i_qubit: int, theta: float):
         """Apply an Rx rotation gate onto the circuit.
@@ -406,7 +466,8 @@ class CircuitMPSVidalCanonization:
             i_qubit (int): index of the qubit on which the gate is applied.
             theta (float): rotation angle.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._rx_gate(theta), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._rx_gate(theta))
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_ry_gate(self, i_qubit: int, theta: float):
         """Apply an Ry rotation gate onto the circuit.
@@ -415,7 +476,8 @@ class CircuitMPSVidalCanonization:
             i_qubit (int): index of the qubit on which the gate is applied.
             theta (float): rotation angle.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._ry_gate(theta), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._ry_gate(theta))
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_rz_gate(self, i_qubit: int, theta: float):
         """Apply an Rz rotation gate onto the circuit.
@@ -424,7 +486,8 @@ class CircuitMPSVidalCanonization:
             i_qubit (int): index of the qubit on which the gate is applied.
             theta (float): rotation angle.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._rz_gate(theta), i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._rz_gate(theta))
+        self._apply_single_qubit_gate(gate, i_qubit)
 
     def apply_h_gate(self, i_qubit: int):
         """Apply an H gate onto the circuit.
@@ -432,14 +495,15 @@ class CircuitMPSVidalCanonization:
         Args:
             i_qubit (int): index of the qubit on which the gate is applied.
         """
-        self._apply_single_qubit_gate(CircuitMPSVidalCanonization._h_gate, i_qubit)
+        gate = self._to_backend(CircuitMPSVidalCanonization._h_gate)
+        self._apply_single_qubit_gate(gate, i_qubit)
 
-    def _apply_single_qubit_gate(self, gate_matrix_representation: float, i_qubit: int):
+    def _apply_single_qubit_gate(self, gate_matrix_representation, i_qubit: int):
         """Apply a single-qubit gate onto the circuit.
 
         Args:
-            gate_matrix_representation (float): matrix representation of
-                the gate to be applied.
+            gate_matrix_representation: matrix representation of
+                the gate to be applied (NumPy or CuPy array).
             i_qubit (int): index of the qubit on which the gate is applied.
         """
         if i_qubit < 0:
@@ -486,7 +550,8 @@ class CircuitMPSVidalCanonization:
             np.ndarray: array containing the overall set of retained Schmidt
             values.
         """
-        return self._apply_two_qubit_gate(i_qubit, CircuitMPSVidalCanonization._swap_gate)
+        gate = self._to_backend(CircuitMPSVidalCanonization._swap_gate)
+        return self._apply_two_qubit_gate(i_qubit, gate)
 
     def apply_rzz_gate(self, i_qubit: int, j_qubit: int, theta: float) -> List[np.ndarray]:
         """Applies a RZZ gate between non-neighbouring qubits.
@@ -533,7 +598,8 @@ class CircuitMPSVidalCanonization:
             np.ndarray: array containing the overall set of retained Schmidt
             values.
         """
-        return self._apply_two_qubit_gate(i_qubit, CircuitMPSVidalCanonization._rzz_gate(theta))
+        gate = self._to_backend(CircuitMPSVidalCanonization._rzz_gate(theta))
+        return self._apply_two_qubit_gate(i_qubit, gate)
 
     def get_s_diagonal_elements_values(self, i_site: int) -> np.ndarray:
         """Gets the Schmidt values for a given bond
@@ -553,7 +619,7 @@ class CircuitMPSVidalCanonization:
         if i_site < 0 or i_site >= self._n_qubits - 1:
             raise ValueError("Index out of bound for the Schmidt values")
 
-        return np.diag(self._tn[self._get_schmidt_tag(i_site)].data)
+        return self.xp.diag(self._tn[self._get_schmidt_tag(i_site)].data)
 
     def apply_hyperedge(self, hyper_edge: QAOAManyBodyCorrelator, scaling_factor: float) -> None:
         r"""Applies a HOBO-like term to the MPS, expressed in Vidal's form.
@@ -630,7 +696,7 @@ class CircuitMPSVidalCanonization:
 
             # Inverts the overlap matrix
             diagonal_elements = S.data
-            inverse_diagonal_elements = np.array(
+            inverse_diagonal_elements = self.xp.array(
                 [1 / i if abs(i) > 1.0e-15 else i for i in diagonal_elements]
             )
             U.multiply_index_diagonal(new_index, diagonal_elements, inplace=True)
@@ -641,7 +707,7 @@ class CircuitMPSVidalCanonization:
             self._tn.add_tensor(U)
             self._tn.add_tensor(V)
             self._tn.insert_operator(
-                np.diag(inverse_diagonal_elements.data),
+                self.xp.diag(inverse_diagonal_elements),
                 self._get_tensor_tag(i_site),
                 "V",
                 tags=self._get_schmidt_tag(i_site),
@@ -727,7 +793,7 @@ class CircuitMPSVidalCanonization:
             [matrix_product_state[self._get_tensor_tag(i)].data for i in range(self._n_qubits)]
         )
 
-    def _apply_two_qubit_gate(self, i_qubit: int, array: np.array) -> np.ndarray:
+    def _apply_two_qubit_gate(self, i_qubit: int, array) -> np.ndarray:
         """Applies a two-qubit gate on the circuit.
 
         Note that the two-qubit gate is assumed to be nearest-neighbour,
@@ -735,7 +801,7 @@ class CircuitMPSVidalCanonization:
 
         Args:
             i_qubit (int): qubit on which the gate is applied
-            array (np.array): 4x4 array representation of the gate
+            array: 4x4 array representation of the gate (NumPy or CuPy array)
 
         Returns:
             np.ndarray: array containing the overall set of retained Schmidt
@@ -769,8 +835,8 @@ class CircuitMPSVidalCanonization:
         # if we neglect non-zero singular values
         diagonal_elements = info[("singular_values", self._get_bond_label_right(i_qubit + 1))]
         sqrt_normalization = sqrt(sum(i**2 for i in diagonal_elements))
-        diagonal_elements_normalized = np.array(diagonal_elements) / sqrt_normalization
-        inverse_diagonal_elements = np.array(
+        diagonal_elements_normalized = self.xp.array(diagonal_elements) / sqrt_normalization
+        inverse_diagonal_elements = self.xp.array(
             [1 / i if abs(i) > 1.0e-15 else i for i in diagonal_elements_normalized]
         )
         self._tn[self._get_tensor_tag(i_qubit)].multiply_index_diagonal(
@@ -780,7 +846,7 @@ class CircuitMPSVidalCanonization:
             self._get_bond_label_right(i_qubit + 1), diagonal_elements_normalized, inplace=True
         )
         self._tn.insert_operator(
-            np.diag(inverse_diagonal_elements.data),
+            self.xp.diag(inverse_diagonal_elements),
             self._get_tensor_tag(i_qubit),
             self._get_tensor_tag(i_qubit + 1),
             tags=self._get_schmidt_tag(i_qubit),

@@ -121,6 +121,7 @@ class MPSEvaluator(BaseEvaluator):
         self,
         cost_op: SparsePauliOp,
         params: list[float],
+        device: str | None = None,
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | SparsePauliOp | None = None,
@@ -154,7 +155,7 @@ class MPSEvaluator(BaseEvaluator):
         """
         if len(params) % 2 != 0:
             raise KeyError("Number of parameters must be an even integer")
-        print("Entered evaluation")
+        print(f"Entered evaluation with device {device}")
         # Must come before the cost_op is permuted by the swap strategy.
         if ansatz_circuit is None:
             edges = operator_to_list_of_hyper_edges(cost_op)
@@ -193,7 +194,11 @@ class MPSEvaluator(BaseEvaluator):
 
         if self._cost_op is None or not cost_op.equiv(self._cost_op.sparse_pauli):
             print("Creating QAOACostFunction")
-            self._cost_op = QAOACostFunction(cost_op, self._threshold_cost, self._max_bond_cost, backend =cp.asarray)
+            if device:
+                backend = cp.asarray
+            else:
+                backend = np.array
+            self._cost_op = QAOACostFunction(cost_op, self._threshold_cost, self._max_bond_cost, backend =backend)
 
         # Construct the circuit
         beta_parameters = list(params[: len(params) // 2])
@@ -214,7 +219,7 @@ class MPSEvaluator(BaseEvaluator):
             mixer=mixer,  # type: ignore[arg-type]
             initial_state=initial_state,
             store_intermediate_schmidt_values=self._store_intermediate_schmidt_values,
-            device="GPU"
+            device=device
         )
         print("Applying layers")
         circuit.apply_qaoa_layer(beta_parameters, gamma_parameters)
@@ -225,6 +230,7 @@ class MPSEvaluator(BaseEvaluator):
         print("Computing cost function estimate")
         cost_function_estimate = circuit.compute_cost_function(self._cost_op)
 
+        print("Updating important results")
         # Updates important results
         underlying_mps = circuit.get_underlying_tn()
         self._results_last_iteration.update(
