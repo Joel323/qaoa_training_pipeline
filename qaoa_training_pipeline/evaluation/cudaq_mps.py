@@ -27,6 +27,7 @@ import os
 from dataclasses import dataclass
 from numbers import Integral
 from typing import Iterable, List, Sequence
+import time
 
 import networkx as nx
 import numpy as np
@@ -42,6 +43,7 @@ CUDAQ_MPS_ENV_VARS = {
     "max_bond_dim": "CUDAQ_MPS_MAX_BOND",
     "abs_cutoff": "CUDAQ_MPS_ABS_CUTOFF",
     "relative_cutoff": "CUDAQ_MPS_RELATIVE_CUTOFF",
+    "svd_algo": "CUDAQ_MPS_SVD_ALGO",
 }
 
 
@@ -148,6 +150,7 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         precision: str = "fp64",
         auto_setup_target: bool = True,
         require_gpu: bool = True,
+        svd_algo: str | None = None
     ) -> None:
         """Initialize the evaluator without setting the CUDA-Q target."""
 
@@ -169,6 +172,17 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         if relative_cutoff < 0.0:
             raise ValueError("relative_cutoff must be non-negative.")
 
+        if svd_algo is not None:
+            svd_algo = svd_algo.upper()
+            if svd_algo not in {"GESVD", "GESVDJ", "GESVDP", "GESVDR"}:
+                raise ValueError(
+                    "svd_algo must be one of GESVD, GESVDJ, GESVDP, or GESVDR."
+                )
+            self._svd_algo = svd_algo
+        else:
+            self._svd_algo = "GESVD"
+
+
         self._max_bond_dim = max_bond_dim
         self._abs_cutoff = abs_cutoff
         self._relative_cutoff = relative_cutoff
@@ -178,6 +192,11 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         self._target_is_configured = False
         self._kernel = None
         self._results_last_iteration = {}
+        self._hamiltonian = None
+        self._edges_src = None
+        self._edges_tgt = None
+        self._edge_coefficients = None
+        self._terms = None
 
         self._cost_op: SparsePauliOp | None = None
         if graph is not None:
@@ -235,41 +254,28 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
             raise KeyError("Number of parameters must be an even integer")
 
         layer_count = len(qaoa_params) // 2
-        terms = self._terms_from_cost_operator(active_cost_op)
+        
 
         if self._auto_setup_target:
             self.setup_target()
 
-        if self._kernel is None:
-            self._kernel = _cudaq_qaoa_kernel(self._cudaq)
 
-        hamiltonian = self._cudaq_hamiltonian(terms)
-        edges_src = [term.u for term in terms]
-        edges_tgt = [term.v for term in terms]
-        edge_coefficients = [term.coefficient for term in terms]
+        if self._hamiltonian is None:
+            self._terms = self._terms_from_cost_operator(active_cost_op)
+            self._hamiltonian = self._cudaq_hamiltonian(self._terms)
+            self._edges_src = [term.u for term in self._terms]
+            self._edges_tgt = [term.v for term in self._terms]
+            self._edge_coefficients = [term.coefficient for term in self._terms]
+        if self._kernel is None:
+            self._kernel = self._make_graph_qaoa_kernel(self._cudaq,active_cost_op.num_qubits,self._terms)
 
         result = self._cudaq.observe(
             self._kernel,
-            hamiltonian,
-            active_cost_op.num_qubits,
+            self._hamiltonian,
             layer_count,
-            len(terms),
-            edges_src,
-            edges_tgt,
-            edge_coefficients,
             list(qaoa_params),
         )
         energy = float(np.real(result.expectation()))
-
-        self._results_last_iteration = {
-            "target": CUDAQ_MPS_TARGET,
-            "precision": self._precision,
-            "n_qubits": active_cost_op.num_qubits,
-            "n_edges": len(terms),
-            "energy": energy,
-            "mps_environment": self._mps_environment(),
-        }
-
         return energy
 
     def evaluate_betas_gammas(
@@ -528,12 +534,16 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
 
     def _mps_environment(self) -> dict[str, str]:
         """Return the MPS target configuration as environment strings."""
-
-        return {
+        env = {
             "CUDAQ_MPS_MAX_BOND": str(self._max_bond_dim),
             "CUDAQ_MPS_ABS_CUTOFF": str(self._abs_cutoff),
             "CUDAQ_MPS_RELATIVE_CUTOFF": str(self._relative_cutoff),
         }
+
+        if self._svd_algo is not None:
+            env["CUDAQ_MPS_SVD_ALGO"] = self._svd_algo
+
+        return env
 
     def _validate_cudaq_runtime(self) -> None:
         """Check target and GPU availability when CUDA-Q exposes the probes."""
@@ -554,3 +564,42 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
                     f"CUDA-Q target '{CUDAQ_MPS_TARGET}' requires an NVIDIA GPU, "
                     "but CUDA-Q reports zero available GPUs."
                 )
+    @staticmethod
+    def _make_graph_qaoa_kernel(
+        cudaq,
+        n_qubits: int,
+        terms: list[_ZZTerm],
+    ):
+        """Create a CUDA-Q kernel specialized to a fixed graph.
+
+        The graph data is captured as primitive Python lists because CUDA-Q
+        kernel capture does not support tuple-of-tuples.
+        """
+
+        edges_src = [int(term.u) for term in terms]
+        edges_tgt = [int(term.v) for term in terms]
+        edge_coefficients = [float(term.coefficient) for term in terms]
+        edge_count = len(edges_src)
+
+        @cudaq.kernel
+        def graph_qaoa_kernel(layer_count: int, params: list[float]):
+            qreg = cudaq.qvector(n_qubits)
+            h(qreg)
+
+            for layer in range(layer_count):
+                gamma = params[layer_count + layer]
+
+                for edge_idx in range(edge_count):
+                    u = edges_src[edge_idx]
+                    v = edges_tgt[edge_idx]
+                    coeff = edge_coefficients[edge_idx]
+
+                    x.ctrl(qreg[u], qreg[v])
+                    rz(2.0 * gamma * coeff, qreg[v])
+                    x.ctrl(qreg[u], qreg[v])
+
+                beta = params[layer]
+                for qubit_idx in range(n_qubits):
+                    rx(2.0 * beta, qreg[qubit_idx])
+
+        return graph_qaoa_kernel
