@@ -24,12 +24,16 @@ order terms are rejected.
 
 from dataclasses import dataclass
 from typing import Sequence
+from collections import defaultdict
 
 import numpy as np
+import cupy as cp
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
+from cuquantum.tensornet.experimental import MPSConfig, TNConfig
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
+from qaoa_training_pipeline.utils.graph_utils import make_swap_strategy, operator_to_list_of_hyper_edges
 
 
 CUQUANTUM_OBSERVABLE_STRATEGIES = {"pauli_products"}
@@ -96,15 +100,18 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
     def __init__(
         self,
         max_bond_dim: int | None = 64,
-        abs_cutoff: float | None = 1.0e-6,
-        rel_cutoff: float | None = 1.0e-6,
+        abs_cutoff: float | None = None,
+        rel_cutoff: float | None = None,
         precision: str = "fp32",
-        svd_algo: str | None = "gesvdj",
-        mpo_application: str | None = "exact",
+        svd_algo: str | None = None,
+        mpo_application: str | None = None,
         observable_strategy: str = "pauli_products",
         device_id: int | None = None,
         network_options: dict | None = None,
         release_workspace: bool = False,
+        gauge_option: str | None = None,
+        normalization: str | None = None,
+        use_swap_strategy: bool | None = True
     ) -> None:
         """Initialize the evaluator without importing cuQuantum."""
 
@@ -146,12 +153,30 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         self._device_id = device_id
         self._network_options = dict(network_options or {})
         self._release_workspace = release_workspace
-
+        self._terms = None
+        self._pauli_terms = None
+        self._use_swap_strategy = use_swap_strategy
         self._cuquantum_classes = None
         self._operator = None
         self._operator_cost_op: SparsePauliOp | None = None
         self._energy_offset = 0.0
         self._results_last_iteration = {}
+        self._state = None
+
+        self._config = MPSConfig(
+            max_extent=max_bond_dim,
+            abs_cutoff=abs_cutoff,
+            rel_cutoff=rel_cutoff,
+            #algorithm="gesvd",
+            mpo_application=mpo_application,
+            gauge_option=gauge_option, 
+            algorithm=svd_algo,
+            normalization=normalization
+        )
+
+        # self._config = TNConfig(
+        #     num_hyper_samples=4
+        # )
 
     # pylint: disable=too-many-positional-arguments,arguments-differ
     def evaluate(
@@ -164,43 +189,31 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
     ) -> float:
         """Evaluate the default QAOA energy for the given diagonal cost operator."""
 
-        self._validate_qaoa_features(mixer, initial_state, ansatz_circuit)
+        # self._validate_qaoa_features(mixer, initial_state, ansatz_circuit)
 
-        if len(params) % 2 != 0:
-            raise KeyError("Number of parameters must be an even integer")
+        # if len(params) % 2 != 0:
+        #     raise KeyError("Number of parameters must be an even integer")
 
-        terms, identity_offset = self._terms_from_cost_operator(cost_op)
-        if not terms:
-            self._results_last_iteration = self._results_metadata(
-                state_norm=1.0,
-                identity_offset=identity_offset,
-            )
-            return identity_offset
+        self._terms_from_cost_operator(cost_op, params)
+        self._pauli_strings_from_terms(cost_op.num_qubits, self._terms)
 
-        self._ensure_operator(cost_op, terms, identity_offset)
 
         _, _, NetworkState = self._get_cuquantum_classes()
 
         state = NetworkState(
             [2 for _ in range(cost_op.num_qubits)],
+            config = self._config,
             dtype=self._dtype,
-            config=self._mps_config(),
-            options=self._network_options_for_runtime(),
         )
+        self._state = state
         #norm = state.compute_norm()
-        try:
-            self._apply_qaoa_state(state, cost_op.num_qubits, terms, params)
-            print(self._operator)
-            expectation = state.compute_expectation(
-                self._operator,
-            )
-        finally:
-            state.free()
+        self._apply_qaoa_state(self._state, cost_op.num_qubits, self._terms, params)
+        expectation = self._state.compute_expectation(
+            self._pauli_terms
+        )
+        self.free_state()
 
-        energy = self._as_complex_scalar(expectation)
-        energy += self._energy_offset
-        energy = float(np.real(energy))
-        return energy
+        return expectation
 
     def get_results_from_last_iteration(self) -> dict:
         """Return cuTensorNet configuration metadata from the last evaluation."""
@@ -314,13 +327,12 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             return
 
         _, NetworkOperator, _ = self._get_cuquantum_classes()
-        operator = NetworkOperator(
-            [2] * cost_op.num_qubits,
+        operator = NetworkOperator.from_pauli_strings(
+            self._pauli_strings_from_terms(cost_op.num_qubits, terms),
             dtype=self._dtype,
-            options=self._network_options_for_runtime(),
         )
 
-        self._append_pauli_product_terms(operator, terms)
+        # self._append_pauli_product_terms(operator, terms)
         self._energy_offset = identity_offset
 
         self._operator = operator
@@ -354,78 +366,140 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         layer_count = len(params) // 2
         h_gate = self._h_gate()
 
+        self._swap_layer_pairs = defaultdict(list)
+        if self._swap_strategy:
+            for term in terms:
+                if len(term.qubits) == 2:
+                    q0, q1 = sorted(term.qubits)
+                    distance = self._swap_strategy.distance_matrix[q0, q1]
+                    self._swap_layer_pairs[distance].append(
+                        (min(q0, q1), max(q0, q1))
+                )
         for qubit in range(n_qubits):
             state.apply_tensor_operator([qubit], h_gate, unitary=True)
-
+        
+        rep = 1
         for layer in range(layer_count):
-            gamma = params[layer_count + layer]
-            for term in terms:
-                if len(term.qubits) == 1:
-                    theta = 2.0 * gamma * term.coefficient
-                    state.apply_tensor_operator(
-                        [term.qubits[0]],
-                        self._rz_gate(theta),
-                        unitary=True,
-                    )
-                elif len(term.qubits) == 2:
-                    theta = 2.0 * gamma * term.coefficient
-                    q0, q1 = sorted(term.qubits)
-
-                    # --- bring qubits together ---
-                    # Move q1 left until it is next to q0
-                    for k in range(q1 - 1, q0, -1):
+            gamma = params[layer_count + layer] 
+            if not self._swap_strategy:
+                for term in terms:
+                    if len(term.qubits) == 1:
+                        theta = 2.0 * gamma * term.coefficient
                         state.apply_tensor_operator(
-                            [k, k + 1],
-                            self._swap_gate(),
+                            [term.qubits[0]],
+                            self._rz_gate(theta),
                             unitary=True,
                         )
-                    # --- apply RZZ on adjacent qubits ---
-                    state.apply_tensor_operator(
-                        [q0, q0 + 1],
-                        self._rzz_gate(theta),
-                        unitary=True,
-                    )
+                    elif len(term.qubits) == 2:
+                        
+                        theta = 2.0 * gamma * term.coefficient
+                        q0, q1 = sorted(term.qubits)
 
-                    # --- undo swaps ---
-                    for k in range(q0 + 1, q1):
+                        # --- bring qubits together ---
+                        # Move q1 left until it is next to q0
+                        for k in range(q1 - 1, q0, -1):
+                            state.apply_tensor_operator(
+                                [k, k + 1],
+                                self._swap_gate(),
+                                unitary=True,
+                            )
+                        # # --- apply RZZ on adjacent qubits ---
                         state.apply_tensor_operator(
-                            [k, k + 1],
-                            self._swap_gate(),
+                            [q0, q0+1],
+                            self._rzz_gate(theta),
                             unitary=True,
                         )
 
+                        # # --- undo swaps ---
+                        for k in range(q0 + 1, q1):
+                            state.apply_tensor_operator(
+                                [k, k + 1],
+                                self._swap_gate(),
+                                unitary=True,
+                            )
+                
+            else:
+                
+                layer_order = list(range(len(self._swap_strategy) + 1))
+                if rep % 2 == 0:
+                    layer_order = layer_order[::-1]
+
+                for layer_idx in layer_order:
+                    permutation = self._swap_strategy.inverse_composed_permutation(layer_idx)
+                    # 1. Apply the gates.
+                    for i , (node0, node1)  in enumerate(self._swap_layer_pairs[layer_idx]):
+                        theta = 2.0 * gamma * next(term.coefficient for term in terms if term.qubits == (node0,node1))
+                        positions = [min(permutation.index(node0), permutation.index(node1)), max(permutation.index(node0), permutation.index(node1))]
+
+                        state.apply_tensor_operator(
+                            positions,
+                            self._rzz_gate(theta),
+                            unitary=True,
+                        )
+
+                    if rep % 2 == 0:
+                        swap_layer_idx = layer_idx - 1
+                    else:
+                        swap_layer_idx = layer_idx
+
+                    # 2. Apply the SWAPs.
+                    if 0 <= swap_layer_idx < len(self._swap_strategy):
+                        for swap_pairs in self._swap_strategy.swap_layer(swap_layer_idx):
+                            if swap_pairs[1] != swap_pairs[0] + 1:
+                                raise ValueError("Inconsistency found in SWAP strategy")
+                            state.apply_tensor_operator(
+                                [swap_pairs[0],swap_pairs[1]],
+                                self._swap_gate(),
+                                unitary=True,
+                            )
+            rep +=1
             beta = params[layer]
             rx_gate = self._rx_gate(2.0 * beta)
             for qubit in range(n_qubits):
                 state.apply_tensor_operator([qubit], rx_gate, unitary=True)
 
-    @staticmethod
-    def _terms_from_cost_operator(cost_op: SparsePauliOp) -> tuple[list[_DiagonalZTerm], float]:
+    def _terms_from_cost_operator(self, cost_op: SparsePauliOp, params) -> tuple[list[_DiagonalZTerm], float]:
         """Extract supported diagonal terms and the identity offset from a cost operator."""
 
-        terms = []
-        identity_offset = 0.0
+        if self._terms is None:
+            terms = []
+            identity_offset = 0.0
 
-        for pauli_str, coefficient in cost_op.to_list():
-            coefficient = complex(coefficient)
-            if abs(coefficient.imag) > 1.0e-12:
-                raise NotImplementedError("Complex Hamiltonian coefficients are not supported.")
-            if any(char not in {"I", "Z"} for char in pauli_str):
-                raise NotImplementedError(
-                    "CuQuantumMPSEvaluator supports only diagonal I/Z cost operators."
+            if self._use_swap_strategy:
+                edges = operator_to_list_of_hyper_edges(cost_op)
+                self._swap_strategy = make_swap_strategy(
+                    [tuple(val[0]) for val in edges],
+                    cost_op.num_qubits,
                 )
 
-            qubits = tuple(idx for idx, char in enumerate(pauli_str[::-1]) if char == "Z")
-            if len(qubits) == 0:
-                identity_offset += float(coefficient.real)
-            elif len(qubits) <= 2:
-                terms.append(_DiagonalZTerm(qubits=qubits, coefficient=float(coefficient.real)))
-            else:
-                raise NotImplementedError(
-                    "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
-                )
+                # If we use a SWAP strategy and the QAOA depth is odd we must permute the cost op.
+                if (len(params) // 2) % 2 == 1:
+                    inv_perm = self._swap_strategy.inverse_composed_permutation(
+                        len(self._swap_strategy)
+                    )
+                    permutation = [inv_perm.index(idx) for idx in range(len(inv_perm))]
+                    cost_op = cost_op.apply_layout(permutation)
 
-        return terms, identity_offset
+            for pauli_str, coefficient in cost_op.to_list():
+                coefficient = complex(coefficient)
+                if abs(coefficient.imag) > 1.0e-12:
+                    raise NotImplementedError("Complex Hamiltonian coefficients are not supported.")
+                if any(char not in {"I", "Z"} for char in pauli_str):
+                    raise NotImplementedError(
+                        "CuQuantumMPSEvaluator supports only diagonal I/Z cost operators."
+                    )
+
+                qubits = tuple(idx for idx, char in enumerate(pauli_str[::-1]) if char == "Z")
+                if len(qubits) == 0:
+                    identity_offset += float(coefficient.real)
+                elif len(qubits) <= 2:
+                    terms.append(_DiagonalZTerm(qubits=qubits, coefficient=float(coefficient.real)))
+                else:
+                    raise NotImplementedError(
+                        "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
+                    )
+
+            self._terms = terms
 
     @staticmethod
     def _validate_qaoa_features(
@@ -444,55 +518,56 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
     def _h_gate(self) -> np.ndarray:
         """Return the Hadamard gate."""
-
-        return np.array(
-            [[1.0 / np.sqrt(2.0), 1.0 / np.sqrt(2.0)], [1.0 / np.sqrt(2.0), -1.0 / np.sqrt(2.0)]],
-            dtype=self._np_dtype,
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        return xp.array(
+            [[1.0 / xp.sqrt(2.0), 1.0 / xp.sqrt(2.0)], [1.0 / xp.sqrt(2.0), -1.0 / xp.sqrt(2.0)]],dtype=dtp
         )
 
     def _z_gate(self) -> np.ndarray:
         """Return the Pauli-Z gate."""
-
-        return np.array([[1.0, 0.0], [0.0, -1.0]], dtype=self._np_dtype)
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        return xp.array([[1.0, 0.0], [0.0, -1.0]] ,dtype=dtp)
 
     def _rx_gate(self, theta: float) -> np.ndarray:
         """Return the RX(theta) gate."""
-
-        return np.array(
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        return xp.array(
             [
-                [np.cos(theta / 2.0), -1.0j * np.sin(theta / 2.0)],
-                [-1.0j * np.sin(theta / 2.0), np.cos(theta / 2.0)],
-            ],
-            dtype=self._np_dtype,
+                [xp.cos(theta / 2.0), -1.0j * xp.sin(theta / 2.0)],
+                [-1.0j * xp.sin(theta / 2.0), xp.cos(theta / 2.0)],
+            ],dtype=dtp
         )
 
     def _rz_gate(self, theta: float) -> np.ndarray:
         """Return the RZ(theta) gate."""
-
-        return np.array(
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        return xp.array(
             [
-                [np.exp(-0.5j * theta), 0.0],
-                [0.0, np.exp(0.5j * theta)],
-            ],
-            dtype=self._np_dtype,
+                [xp.exp(-0.5j * theta), 0.0],
+                [0.0, xp.exp(0.5j * theta)],
+            ],dtype=dtp
         )
 
     def _rzz_gate(self, theta: float) -> np.ndarray:
         """Return the RZZ(theta) gate in cuQuantum tensor-operator axis order."""
-
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
         # Diagonal entries
-        diag = np.array(
+        diag = xp.array(
             [
-                np.exp(-0.5j * theta),
-                np.exp(0.5j * theta),
-                np.exp(0.5j * theta),
-                np.exp(-0.5j * theta),
-            ],
-            dtype=self._np_dtype,
+                xp.exp(-0.5j * theta),
+                xp.exp(0.5j * theta),
+                xp.exp(0.5j * theta),
+                xp.exp(-0.5j * theta),
+            ],dtype=dtp
         )
 
         # Build operator explicitly in (out0, out1, in0, in1)
-        gate = np.zeros((2, 2, 2, 2), dtype=self._np_dtype)
+        gate = xp.zeros((2, 2, 2, 2),dtype=dtp)
 
         for i in range(2):
             for j in range(2):
@@ -501,11 +576,40 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
         return gate
     def _swap_gate(self):
-        swap = np.zeros((2, 2, 2, 2), dtype=self._np_dtype)
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        swap = xp.zeros((2, 2, 2, 2),dtype=dtp)
         for i in range(2):
             for j in range(2):
                 swap[j, i, i, j] = 1.0
         return swap
+
+    def _pauli_strings_from_terms(
+        self, 
+        n_qubits: int,
+        terms: Sequence[_DiagonalZTerm],
+    ) -> dict[str, float]:
+        """Build cuQuantum mode-order Pauli strings from diagonal Z terms.""" 
+        if self._pauli_terms == None:
+            xp = self._backend()
+            pauli_strings = {}
+            for term in terms:
+                label = ["I"] * n_qubits
+                for qubit in term.qubits:
+                    label[qubit] = "Z"
+                pauli_label = "".join(label)
+                pauli_strings[pauli_label] = pauli_strings.get(pauli_label, 0.0) + xp.float64(term.coefficient)
+            self._pauli_terms = {
+                pauli_label: coefficient
+                for pauli_label, coefficient in pauli_strings.items()
+                if abs(coefficient) > 1.0e-15
+            }
+
+    def _backend(self):
+        return cp
+
+    def free_state(self):
+        self._state.free()
 
     @staticmethod
     def _as_complex_scalar(value) -> complex:
