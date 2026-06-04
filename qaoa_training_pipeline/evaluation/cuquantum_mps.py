@@ -195,7 +195,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         #     raise KeyError("Number of parameters must be an even integer")
 
         self._terms_from_cost_operator(cost_op, params)
-        self._pauli_strings_from_terms(cost_op.num_qubits, self._terms)
+        self._pauli_strings_from_terms(cost_op.num_qubits, self._observable_terms)
 
 
         _, _, NetworkState = self._get_cuquantum_classes()
@@ -465,21 +465,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             terms = []
             identity_offset = 0.0
 
-            if self._use_swap_strategy:
-                edges = operator_to_list_of_hyper_edges(cost_op)
-                self._swap_strategy = make_swap_strategy(
-                    [tuple(val[0]) for val in edges],
-                    cost_op.num_qubits,
-                )
-
-                # If we use a SWAP strategy and the QAOA depth is odd we must permute the cost op.
-                if (len(params) // 2) % 2 == 1:
-                    inv_perm = self._swap_strategy.inverse_composed_permutation(
-                        len(self._swap_strategy)
-                    )
-                    permutation = [inv_perm.index(idx) for idx in range(len(inv_perm))]
-                    cost_op = cost_op.apply_layout(permutation)
-
             for pauli_str, coefficient in cost_op.to_list():
                 coefficient = complex(coefficient)
                 if abs(coefficient.imag) > 1.0e-12:
@@ -498,8 +483,43 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                     raise NotImplementedError(
                         "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
                     )
-
             self._terms = terms
+            if self._use_swap_strategy:
+                edges = operator_to_list_of_hyper_edges(cost_op)
+                self._swap_strategy = make_swap_strategy(
+                    [tuple(val[0]) for val in edges],
+                    cost_op.num_qubits,
+                )
+
+                # If we use a SWAP strategy and the QAOA depth is odd we must permute the cost op.
+                if (len(params) // 2) % 2 == 1:
+                    inv_perm = self._swap_strategy.inverse_composed_permutation(
+                        len(self._swap_strategy)
+                    )
+                    permutation = [inv_perm.index(idx) for idx in range(len(inv_perm))]
+                    cost_op = cost_op.apply_layout(permutation)
+                    for pauli_str, coefficient in cost_op.to_list():
+                        coefficient = complex(coefficient)
+                        if abs(coefficient.imag) > 1.0e-12:
+                            raise NotImplementedError("Complex Hamiltonian coefficients are not supported.")
+                        if any(char not in {"I", "Z"} for char in pauli_str):
+                            raise NotImplementedError(
+                                "CuQuantumMPSEvaluator supports only diagonal I/Z cost operators."
+                            )
+
+                        qubits = tuple(idx for idx, char in enumerate(pauli_str[::-1]) if char == "Z")
+                        if len(qubits) == 0:
+                            identity_offset += float(coefficient.real)
+                        elif len(qubits) <= 2:
+                            terms.append(_DiagonalZTerm(qubits=qubits, coefficient=float(coefficient.real)))
+                        else:
+                            raise NotImplementedError(
+                                "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
+                            )
+            self._observable_terms = terms
+            
+
+            
 
     @staticmethod
     def _validate_qaoa_features(
