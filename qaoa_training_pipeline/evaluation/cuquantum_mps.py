@@ -371,7 +371,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         swap_gate = self._swap_gate()
 
         self._swap_layer_pairs = defaultdict(list)
-        if self._swap_strategy:
+        if self._use_swap_strategy:
             for term in terms:
                 if len(term.qubits) == 2:
                     q0, q1 = sorted(term.qubits)
@@ -380,12 +380,15 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                         (min(q0, q1), max(q0, q1))
                 )
         for qubit in range(n_qubits):
-            state.apply_tensor_operator([qubit], h_gate, unitary=True, immutable=True)
+            state.apply_tensor_operator([qubit], h_gate, unitary=True, immutable=False)
+
+        # plus_state = self._plus_state(n_qubits)
+        # state.set_initial_mps(plus_state)
         
         rep = 1
         for layer in range(layer_count):
             gamma = params[layer_count + layer] 
-            if not self._swap_strategy:
+            if not self._use_swap_strategy:
                 for term in terms:
                     if len(term.qubits) == 1:
                         theta = 2.0 * gamma * term.coefficient
@@ -412,6 +415,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             [q0, q0+1],
                             self._rzz_gate(theta),
                             unitary=True,
+                            immutable=False 
                         )
 
                         # # --- undo swaps ---
@@ -439,7 +443,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             positions,
                             self._rzz_gate(theta),
                             unitary=True,
-                            immutable=True
+                            immutable=False
                         )
 
                     if rep % 2 == 0:
@@ -456,13 +460,13 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                                 [swap_pairs[0],swap_pairs[1]],
                                 swap_gate,
                                 unitary=True,
-                                immutable=True
+                                immutable=False
                             )
             rep +=1
             beta = params[layer]
             rx_gate = self._rx_gate(2.0 * beta)
             for qubit in range(n_qubits):
-                state.apply_tensor_operator([qubit], rx_gate, unitary=True, immutable=True)
+                state.apply_tensor_operator([qubit], rx_gate, unitary=True, immutable=False)
 
     def _terms_from_cost_operator(self, cost_op: SparsePauliOp, params) -> tuple[list[_DiagonalZTerm], float]:
         """Extract supported diagonal terms and the identity offset from a cost operator."""
@@ -490,6 +494,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                         "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
                     )
             self._terms = terms
+            terms_observable = terms
             if self._use_swap_strategy:
                 edges = operator_to_list_of_hyper_edges(cost_op)
                 self._swap_strategy = make_swap_strategy(
@@ -543,7 +548,19 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         if ansatz_circuit is not None:
             raise NotImplementedError("Custom ansatz circuits are not supported.")
 
-    def _h_gate(self) -> np.ndarray:
+    def _plus_state(self, n_qubits):
+        xp = self._backend()
+        dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
+        plus = xp.array([1/np.sqrt(2), 1/np.sqrt(2)], dtype=dtp)
+        mps = [plus.reshape(2,1)]
+        mps += [plus.reshape(1,2,1) for _ in range(n_qubits - 2)]
+        mps += [plus.reshape(1,2)]
+
+        return mps
+
+
+
+    def _h_gate(self):
         """Return the Hadamard gate."""
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
@@ -551,13 +568,13 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             [[1.0 / xp.sqrt(2.0), 1.0 / xp.sqrt(2.0)], [1.0 / xp.sqrt(2.0), -1.0 / xp.sqrt(2.0)]],dtype=dtp
         )
 
-    def _z_gate(self) -> np.ndarray:
+    def _z_gate(self):
         """Return the Pauli-Z gate."""
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
         return xp.array([[1.0, 0.0], [0.0, -1.0]] ,dtype=dtp)
 
-    def _rx_gate(self, theta: float) -> np.ndarray:
+    def _rx_gate(self, theta: float):
         """Return the RX(theta) gate."""
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
@@ -568,7 +585,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             ],dtype=dtp
         )
 
-    def _rz_gate(self, theta: float) -> np.ndarray:
+    def _rz_gate(self, theta: float):
         """Return the RZ(theta) gate."""
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
@@ -579,7 +596,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             ],dtype=dtp
         )
 
-    def _rzz_gate(self, theta: float) -> np.ndarray:
+    def _rzz_gate(self, theta: float):
         """Return the RZZ(theta) gate in cuQuantum tensor-operator axis order."""
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
