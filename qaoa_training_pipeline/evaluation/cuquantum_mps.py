@@ -197,7 +197,10 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         self._terms_from_cost_operator(cost_op, params)
         self._pauli_strings_from_terms(cost_op.num_qubits, self._observable_terms)
 
+        print(cost_op.num_qubits)
+        print(len(next(iter(self._pauli_terms.keys()))))
 
+        assert len(self._terms) == len(self._observable_terms)
         _, _, NetworkState = self._get_cuquantum_classes()
 
         state = NetworkState(
@@ -365,6 +368,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
         layer_count = len(params) // 2
         h_gate = self._h_gate()
+        swap_gate = self._swap_gate()
 
         self._swap_layer_pairs = defaultdict(list)
         if self._swap_strategy:
@@ -376,7 +380,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                         (min(q0, q1), max(q0, q1))
                 )
         for qubit in range(n_qubits):
-            state.apply_tensor_operator([qubit], h_gate, unitary=True)
+            state.apply_tensor_operator([qubit], h_gate, unitary=True, immutable=True)
         
         rep = 1
         for layer in range(layer_count):
@@ -435,6 +439,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             positions,
                             self._rzz_gate(theta),
                             unitary=True,
+                            immutable=True
                         )
 
                     if rep % 2 == 0:
@@ -449,14 +454,15 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                                 raise ValueError("Inconsistency found in SWAP strategy")
                             state.apply_tensor_operator(
                                 [swap_pairs[0],swap_pairs[1]],
-                                self._swap_gate(),
+                                swap_gate,
                                 unitary=True,
+                                immutable=True
                             )
             rep +=1
             beta = params[layer]
             rx_gate = self._rx_gate(2.0 * beta)
             for qubit in range(n_qubits):
-                state.apply_tensor_operator([qubit], rx_gate, unitary=True)
+                state.apply_tensor_operator([qubit], rx_gate, unitary=True, immutable=True)
 
     def _terms_from_cost_operator(self, cost_op: SparsePauliOp, params) -> tuple[list[_DiagonalZTerm], float]:
         """Extract supported diagonal terms and the identity offset from a cost operator."""
@@ -498,6 +504,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                     )
                     permutation = [inv_perm.index(idx) for idx in range(len(inv_perm))]
                     cost_op = cost_op.apply_layout(permutation)
+                    terms_observable = []
                     for pauli_str, coefficient in cost_op.to_list():
                         coefficient = complex(coefficient)
                         if abs(coefficient.imag) > 1.0e-12:
@@ -511,12 +518,12 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                         if len(qubits) == 0:
                             identity_offset += float(coefficient.real)
                         elif len(qubits) <= 2:
-                            terms.append(_DiagonalZTerm(qubits=qubits, coefficient=float(coefficient.real)))
+                            terms_observable.append(_DiagonalZTerm(qubits=qubits, coefficient=float(coefficient.real)))
                         else:
                             raise NotImplementedError(
                                 "CuQuantumMPSEvaluator currently supports only one- and two-local Z terms."
                             )
-            self._observable_terms = terms
+            self._observable_terms = terms_observable
             
 
             
