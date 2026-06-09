@@ -30,7 +30,7 @@ import numpy as np
 import cupy as cp
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
-from cuquantum.tensornet.experimental import MPSConfig, TNConfig
+from cuquantum.tensornet.experimental import MPSConfig, TNConfig, NetworkOperator, NetworkState
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.utils.graph_utils import make_swap_strategy, operator_to_list_of_hyper_edges
@@ -45,26 +45,6 @@ class _DiagonalZTerm:
 
     qubits: tuple[int, ...]
     coefficient: float
-
-
-def _require_cuquantum():
-    """Import cuQuantum and raise a clear optional-dependency error if unavailable."""
-
-    try:
-        from cuquantum.tensornet.experimental import (  # pylint: disable=import-outside-toplevel
-            MPSConfig,
-            NetworkOperator,
-            NetworkState,
-        )
-    except (ImportError, OSError) as exc:
-        raise ImportError(
-            "CuQuantumMPSEvaluator requires the optional cuQuantum Python package. "
-            "Install the CUDA-version-specific package for your system, for example "
-            "`pip install cuquantum-python-cu12` on supported CUDA 12 platforms."
-        ) from exc
-
-    return MPSConfig, NetworkOperator, NetworkState
-
 
 class CuQuantumMPSEvaluator(BaseEvaluator):
     """Evaluate default QAOA energies with cuQuantum's MPS state simulator.
@@ -159,8 +139,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         self._cuquantum_classes = None
         self._operator = None
         self._operator_cost_op: SparsePauliOp | None = None
-        self._energy_offset = 0.0
-        self._results_last_iteration = {}
         self._state = None
 
         self._config = MPSConfig(
@@ -197,11 +175,10 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         self._terms_from_cost_operator(cost_op, params)
         self._pauli_strings_from_terms(cost_op.num_qubits, self._observable_terms)
 
-        print(cost_op.num_qubits)
-        print(len(next(iter(self._pauli_terms.keys()))))
+        # print(cost_op.num_qubits)
+        # print(len(next(iter(self._pauli_terms.keys()))))
 
         assert len(self._terms) == len(self._observable_terms)
-        _, _, NetworkState = self._get_cuquantum_classes()
 
         state = NetworkState(
             [2 for _ in range(cost_op.num_qubits)],
@@ -218,55 +195,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
         return expectation
 
-    def get_results_from_last_iteration(self) -> dict:
-        """Return cuTensorNet configuration metadata from the last evaluation."""
-
-        return self._results_last_iteration
-
-    def to_config(self) -> dict:
-        """Json serializable config to keep track of how results are generated."""
-
-        config = super().to_config()
-        config.update(
-            {
-                "max_bond_dim": self._max_bond_dim,
-                "abs_cutoff": self._abs_cutoff,
-                "rel_cutoff": self._rel_cutoff,
-                "precision": self._precision,
-                "svd_algo": self._svd_algo,
-                "mpo_application": self._mpo_application,
-                "observable_strategy": self._observable_strategy,
-                "device_id": self._device_id,
-                "network_options": self._network_options,
-                "release_workspace": self._release_workspace,
-            }
-        )
-        return config
-
-    @classmethod
-    def from_config(cls, config: dict) -> "CuQuantumMPSEvaluator":
-        """Initialize the evaluator from a configuration dictionary."""
-
-        return cls(**config)
-
-    @classmethod
-    def parse_init_kwargs(cls, init_kwargs: str | None = None) -> dict:
-        """Parse ``max_bond_abs_cutoff_rel_cutoff_precision_svd_algo`` strings."""
-
-        if init_kwargs is None:
-            return dict()
-
-        init_args = init_kwargs.split("_")
-        config = {}
-        keys = ["max_bond_dim", "abs_cutoff", "rel_cutoff", "precision", "svd_algo"]
-        converters = [int, float, float, str, str]
-
-        for idx, (key, converter) in enumerate(zip(keys, converters)):
-            if idx < len(init_args) and init_args[idx].lower() != "none":
-                config[key] = converter(init_args[idx])
-
-        return config
-
     def _get_cuquantum_classes(self):
         """Import and cache cuQuantum classes."""
 
@@ -274,88 +202,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             self._cuquantum_classes = _require_cuquantum()
 
         return self._cuquantum_classes
-
-    def _mps_config(self):
-        """Create the cuTensorNet MPS configuration."""
-
-        MPSConfig, _, _ = self._get_cuquantum_classes()
-        kwargs = {}
-
-        if self._max_bond_dim is not None:
-            kwargs["max_extent"] = self._max_bond_dim
-        if self._abs_cutoff is not None:
-            kwargs["abs_cutoff"] = self._abs_cutoff
-        if self._rel_cutoff is not None:
-            kwargs["rel_cutoff"] = self._rel_cutoff
-        if self._svd_algo is not None:
-            kwargs["algorithm"] = self._svd_algo
-        if self._mpo_application is not None:
-            kwargs["mpo_application"] = self._mpo_application
-
-        return MPSConfig(**kwargs)
-
-    def _network_options_for_runtime(self) -> dict | None:
-        """Return cuTensorNet NetworkOptions as a dictionary."""
-
-        options = dict(self._network_options)
-        if self._device_id is not None:
-            options["device_id"] = self._device_id
-
-        return options or None
-
-    def _results_metadata(self, state_norm: float, identity_offset: float) -> dict:
-        """Return metadata for the last energy evaluation."""
-
-        return {
-            "state_norm": state_norm,
-            "observable_strategy": self._observable_strategy,
-            "precision": self._precision,
-            "max_bond_dim": self._max_bond_dim,
-            "abs_cutoff": self._abs_cutoff,
-            "rel_cutoff": self._rel_cutoff,
-            "svd_algo": self._svd_algo,
-            "mpo_application": self._mpo_application,
-            "identity_offset": identity_offset,
-        }
-
-    def _ensure_operator(
-        self,
-        cost_op: SparsePauliOp,
-        terms: Sequence[_DiagonalZTerm],
-        identity_offset: float,
-    ) -> None:
-        """Build and cache the cuQuantum observable for the current cost operator."""
-
-        if self._operator is not None and cost_op.equiv(self._operator_cost_op):
-            return
-
-        _, NetworkOperator, _ = self._get_cuquantum_classes()
-        operator = NetworkOperator.from_pauli_strings(
-            self._pauli_strings_from_terms(cost_op.num_qubits, terms),
-            dtype=self._dtype,
-        )
-
-        # self._append_pauli_product_terms(operator, terms)
-        self._energy_offset = identity_offset
-
-        self._operator = operator
-        self._operator_cost_op = cost_op.copy()
-
-    def _append_pauli_product_terms(
-        self,
-        operator,
-        terms: Sequence[_DiagonalZTerm],
-    ) -> None:
-        """Append identity-free Pauli product terms to a cuQuantum NetworkOperator."""
-
-        z_gate = self._z_gate()
-        for term in terms:
-            operator.append_product(
-                term.coefficient,
-                [[qubit] for qubit in term.qubits],
-                [z_gate for _ in term.qubits],
-            )
-            
 
     def _apply_qaoa_state(
         self,
@@ -530,9 +376,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             )
             self._observable_terms = terms_observable
             
-
-            
-
     @staticmethod
     def _validate_qaoa_features(
         mixer: QuantumCircuit | None,
@@ -654,15 +497,3 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
     def free_state(self):
         self._state.free()
-
-    @staticmethod
-    def _as_complex_scalar(value) -> complex:
-        """Convert NumPy/CuPy/Torch scalar-like values to a Python complex."""
-
-        if hasattr(value, "get"):
-            value = value.get()
-        if hasattr(value, "detach"):
-            value = value.detach().cpu().numpy()
-        if hasattr(value, "item"):
-            value = value.item()
-        return complex(value)
