@@ -82,13 +82,13 @@ class OptimizedParametersLoader(ParamsProvider):
         """
         return {"trainer_name": self.__class__.__name__}
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Parse the train args, i.e., get file and folder names.
 
         The string should have the format `folder:folder_name:file_pattern:pattern`.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key in ["folder", "file_pattern"]:
                 train_kwargs[key] = str(val)
             else:
