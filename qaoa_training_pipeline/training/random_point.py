@@ -14,18 +14,14 @@ import numpy as np
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+from qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.training.param_result import ParamResult
 
 
-class RandomPoint(BaseTrainer):
+class RandomPoint(ParamsProvider):
     """Generate random initial points for QAOA.
 
-    This class generates random initial points for QAOA. Strictly speaking, this
-    class does not do any training. However, we wrap the BaseTrainer to incorporate
-    random initial point generation in our training pipeline. I.e., this class
-    could be used to generate a random initial point that is then picked-up by
-    the next trainer in the chain.
+    This class generates random initial points for QAOA.
     """
 
     def __init__(
@@ -49,19 +45,9 @@ class RandomPoint(BaseTrainer):
         self._seed = seed
         self._rng = np.random.default_rng(seed=self._seed)
 
-    @property
-    def minimization(self):
-        """Raises a warning as a random point neither minimizes nor maximizes."""
-        raise ValueError(f"{self.__class__.__name__} neither minimizes nor maximizes.")
-
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def provide_params(
         self,
-        cost_op: SparsePauliOp,
-        mixer: QuantumCircuit | None = None,
-        initial_state: QuantumCircuit | None = None,
-        ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
         lower_bound: float | None = None,
         upper_bound: float | None = None,
         seed: int | None = None,
@@ -70,8 +56,7 @@ class RandomPoint(BaseTrainer):
         """Return a random initial point.
 
         Args:
-            cost_op: The cost operator. This argument is not used.
-            reps: The number of QAOA repetitions. This argument is used.
+            reps: The number of QAOA repetitions.
             lower_bound: The lower bound for the value of the random initial point. If this
                 argument is not given we default to the value set at initialization.
             upper_bound: The upper bound for the value of the random initial point. If this
@@ -80,11 +65,7 @@ class RandomPoint(BaseTrainer):
                 the random number generator set at initialization is used. If a seed is
                 given then we use a random number generator initialized with this seed. Note
                 the the rng defined at initialization is not changed.
-            mixer: Not used.
-            initial_state: Not used.
-            ansatz_circuit: Not used.
         """
-        self._warn_ignored_inputs(params0=params0)
         reps = self._require(reps, "reps")
         start = time()
 
@@ -108,15 +89,15 @@ class RandomPoint(BaseTrainer):
         """Create a random initial point generator from a config."""
         return cls(**config)
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Parse arguments for the train method from a string.
 
         Args:
-            args_str: A string of keyword arguments of the form `k1:v1:k2:v2`.
+            kwargs_str: A string of keyword arguments of the form `k1:v1:k2:v2`.
                 The possible keywords are `reps`, `seed`, `lower_bound`, and `upper_bound`.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key in ["reps", "seed"]:
                 train_kwargs[key] = int(val)
             elif key in ["lower_bound", "upper_bound"]:

@@ -82,7 +82,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         return isinstance(self._extrema_locator, Argmin)
 
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
