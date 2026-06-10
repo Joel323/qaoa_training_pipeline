@@ -198,7 +198,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         minimize function. We give this as a string in the format `params0:v1/v2/v3/v4...`.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(args_str).items():
             if key == "params0":
                 train_kwargs[key] = self.extract_list(val, dtype=float)
             else:

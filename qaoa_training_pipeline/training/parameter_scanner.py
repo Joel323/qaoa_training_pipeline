@@ -218,7 +218,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         num_points:20:parameter_ranges:0/6.283185/0/6.283185.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(args_str).items():
             if key == "num_points":
                 train_kwargs[key] = int(val)
             elif key == "parameter_ranges":
