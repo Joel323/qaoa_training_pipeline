@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from qaoa_training_pipeline.training.history_mixin import HistoryMixin
 
 if TYPE_CHECKING:
-    from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+    from qaoa_training_pipeline.params_provider import ParamsProvider
 
 
 @dataclass
@@ -35,7 +35,7 @@ class ParamResult:
         self,
         optimized_params: list,
         duration: float,
-        trainer: "BaseTrainer",
+        params_provider: "ParamsProvider",
         energy: float | None = None,
     ):
         """Initialize the data class."""
@@ -52,11 +52,11 @@ class ParamResult:
         # Convert, e.g., np.float to float
         self.data["optimized_params"] = [float(val) for val in optimized_params]
         self.data["optimized_qaoa_angles"] = [
-            float(val) for val in trainer.qaoa_angles_function(optimized_params)
+            float(val) for val in params_provider.qaoa_angles_function(optimized_params)
         ]
         self.data["train_duration"] = duration
         self.data["energy"] = "NA" if energy is None else float(energy)
-        self.data["trainer"] = trainer.to_config()
+        self.data["trainer"] = params_provider.to_config()
 
     def __contains__(self, item):
         return item in self.data
