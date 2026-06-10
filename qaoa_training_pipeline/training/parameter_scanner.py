@@ -21,7 +21,7 @@ from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
-from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+from qaoa_training_pipeline.params_provider import ParamsProvider
 
 # cspell: ignore argmin contourf colorbar
 from qaoa_training_pipeline.training.extrema_location import Argmax, Argmin
@@ -35,7 +35,7 @@ from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.utils.graph_utils import operator_to_graph
 
 
-class DepthOneScanTrainer(BaseTrainer, HistoryMixin):
+class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
     """Scan the param2 and param1 parameters of QAOA."""
 
     def __init__(
@@ -56,7 +56,8 @@ class DepthOneScanTrainer(BaseTrainer, HistoryMixin):
                 an instance of `BaseAnglesFunction` but we allow any callable here that maps
                 optimization parameters to QAOA angles.
         """
-        BaseTrainer.__init__(self, evaluator=evaluator, qaoa_angles_function=qaoa_angles_function)
+        self._evaluator = evaluator
+        self._qaoa_angles_function = qaoa_angles_function
         HistoryMixin.__init__(self)
 
         # Parameters that will be filled by the scanner.
@@ -87,7 +88,6 @@ class DepthOneScanTrainer(BaseTrainer, HistoryMixin):
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
         parameter_ranges: list[tuple[float, float]] | None = None,
         num_points: int = 15,
     ) -> ParamResult:
@@ -107,7 +107,6 @@ class DepthOneScanTrainer(BaseTrainer, HistoryMixin):
             num_points: The number of points in the param2 and param1 ranges to take. This
                 method will thus evaluate the energy `num_points**2` times.
         """
-        self._warn_ignored_inputs(params0=params0)
         self.reset_history()
         start = time()
 
