@@ -20,7 +20,7 @@ from scipy.optimize import minimize
 
 from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
-from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+from qaoa_training_pipeline.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training.functions import (
     FUNCTIONS,
     BaseAnglesFunction,
@@ -30,7 +30,7 @@ from qaoa_training_pipeline.training.history_mixin import HistoryMixin
 from qaoa_training_pipeline.training.param_result import ParamResult
 
 
-class ScipyTrainer(BaseTrainer, HistoryMixin):
+class ScipyTrainer(PipelineComponent, HistoryMixin):
     """A trainer that wraps SciPy's minimize function."""
 
     def __init__(
@@ -54,8 +54,9 @@ class ScipyTrainer(BaseTrainer, HistoryMixin):
                 an instance of `BaseAnglesFunction` but we allow any callable here that maps
                 optimization parameters to QAOA angles.
         """
-        BaseTrainer.__init__(self, evaluator, qaoa_angles_function)
+        PipelineComponent.__init__(self, evaluator, qaoa_angles_function)
         HistoryMixin.__init__(self)
+
 
         self._minimize_args: dict[str, object] = {"method": "COBYLA"}
 
@@ -72,7 +73,7 @@ class ScipyTrainer(BaseTrainer, HistoryMixin):
         return self._sign == 1
 
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def run(
         self,
         cost_op: SparsePauliOp | None = None,
         mixer: QuantumCircuit | None = None,
