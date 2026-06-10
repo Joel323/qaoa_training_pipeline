@@ -91,7 +91,8 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         release_workspace: bool = False,
         gauge_option: str | None = None,
         normalization: str | None = None,
-        use_swap_strategy: bool | None = True
+        use_swap_strategy: bool | None = True,
+        mode: str | None = 'mps'
     ) -> None:
         """Initialize the evaluator without importing cuQuantum."""
 
@@ -141,20 +142,22 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         self._operator_cost_op: SparsePauliOp | None = None
         self._state = None
 
-        self._config = MPSConfig(
-            max_extent=max_bond_dim,
-            abs_cutoff=abs_cutoff,
-            rel_cutoff=rel_cutoff,
-            #algorithm="gesvd",
-            mpo_application=mpo_application,
-            gauge_option=gauge_option, 
-            algorithm=svd_algo,
-            normalization=normalization
-        )
 
-        # self._config = TNConfig(
-        #     num_hyper_samples=4
-        # )
+        if mode == "mps":
+            self._config = MPSConfig(
+                max_extent=max_bond_dim,
+                abs_cutoff=abs_cutoff,
+                rel_cutoff=rel_cutoff,
+                #algorithm="gesvd",
+                mpo_application=mpo_application,
+                gauge_option=gauge_option, 
+                algorithm=svd_algo,
+                normalization=normalization
+            )
+        elif mode == "tn":
+            self._config = TNConfig(
+                num_hyper_samples=1
+            )
 
     # pylint: disable=too-many-positional-arguments,arguments-differ
     def evaluate(
