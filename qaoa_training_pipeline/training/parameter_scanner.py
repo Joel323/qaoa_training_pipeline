@@ -42,7 +42,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         self,
         evaluator: BaseEvaluator,
         energy_minimization: bool = False,
-        qaoa_angles_function: BaseAnglesFunction | None = None,
+        qaoa_angles_function: BaseAnglesFunction = IdentityFunction(),
     ):
         """Initialize the class instance.
 

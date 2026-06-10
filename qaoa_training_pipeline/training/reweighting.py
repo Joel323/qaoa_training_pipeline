@@ -33,7 +33,7 @@ class ReweightingTrainer(PipelineComponent):
     def __init__(
         self, 
         trainer1: PipelineComponent, 
-        trainer2: PipelineComponent, 
+        trainer2: PipelineComponent | None, 
         qaoa_angles_function: BaseAnglesFunction | None = None
     ) -> None:
         """Initialize the instance.
@@ -186,14 +186,12 @@ class ReweightingTrainer(PipelineComponent):
         return betas + [gamma * scale for gamma in gammas]
 
     @staticmethod
-    def _trainer_from_config(name: str, trainer_init: dict) -> ParamsProvider:
+    def _trainer_from_config(name: str, trainer_init: dict) -> PipelineComponent:
         """Initialize an instance of a trainer."""
 
         # Note: we cannot user the TRAINERS mapping otherwise we will circular import outselves.
         if name == "ScipyTrainer":
             return ScipyTrainer.from_config(trainer_init)
-        elif name == "DepthOneScanTrainer":
-            return DepthOneScanTrainer.from_config(trainer_init)
         elif name == "TransitionStatesTrainer":
             return TransitionStatesTrainer.from_config(trainer_init)
 
