@@ -25,7 +25,7 @@ from qaoa_training_pipeline.params_provider import ParamsProvider
 
 # cspell: ignore argmin contourf colorbar
 from qaoa_training_pipeline.training.extrema_location import Argmax, Argmin
-from qaoa_training_pipeline.training.functions import (
+from qaoa_training_pipeline.functions import (
     FUNCTIONS,
     BaseAnglesFunction,
     IdentityFunction,

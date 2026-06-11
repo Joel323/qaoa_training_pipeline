@@ -11,8 +11,6 @@
 from time import time
 
 import numpy as np
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.training.param_result import ParamResult
