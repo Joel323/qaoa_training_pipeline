@@ -8,7 +8,6 @@
 
 """Trainer for weighted graphs."""
 
-from _typeshed import IdentityFunction
 from time import time
 
 import numpy as np
@@ -18,11 +17,8 @@ from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.pipeline_component import PipelineComponent
-from qaoa_training_pipeline.qaoa_training_pipeline.params_provider import ParamsProvider
-from qaoa_training_pipeline.qaoa_training_pipeline.pipeline import Pipeline
 from qaoa_training_pipeline.functions import BaseAnglesFunction, IdentityFunction
 from qaoa_training_pipeline.training.param_result import ParamResult
-from qaoa_training_pipeline.training.parameter_scanner import DepthOneScanTrainer
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.training.transition_states import TransitionStatesTrainer
 from qaoa_training_pipeline.utils.graph_utils import operator_to_graph

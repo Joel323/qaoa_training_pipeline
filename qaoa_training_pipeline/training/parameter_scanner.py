@@ -209,7 +209,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
             qaoa_angles_function=function,
         )
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Parse the training arguments.
 
         These are given in the form:
@@ -218,7 +218,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         num_points:20:parameter_ranges:0/6.283185/0/6.283185.
         """
         train_kwargs = dict()
-        for key, val in super().parse_runtime_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "num_points":
                 train_kwargs[key] = int(val)
             elif key == "parameter_ranges":
@@ -230,6 +230,18 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
                 raise ValueError("Unknown key in provided train_kwargs.")
 
         return train_kwargs
+
+    def to_config(self) -> dict:
+        """Creates a serializable dictionary to keep track of how results are created.
+
+        Note: This data structure is not intended for us to recreate the class instance.
+        """
+        return {
+            "trainer_name": self.__class__.__name__,
+            "evaluator": self._evaluator.to_config() if self._evaluator else None,
+            "qaoa_angles_function": self._qaoa_angles_function.to_config(),
+        }
+
 
 
 class DepthOneGammaScanTrainer(DepthOneScanTrainer):
