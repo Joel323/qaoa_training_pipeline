@@ -265,11 +265,11 @@ def train(args: argparse.Namespace):
         # Allows us to pass training key-word arguments at runtime.
         if hasattr(args, f"train_kwargs{train_idx}"):
             train_args_str = getattr(args, f"train_kwargs{train_idx}")
-            cmd_train_kwargs = trainer.parse_train_kwargs(train_args_str)
+            cmd_train_kwargs = trainer.parse_runtime_kwargs(train_args_str)
             train_kwargs.update(cmd_train_kwargs)
 
         # Perform the optimization.
-        result = trainer.train(input_problem, **train_kwargs)
+        result = trainer.provide_params(input_problem, **train_kwargs)
 
         all_results[train_idx] = result
 
