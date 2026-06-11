@@ -20,7 +20,7 @@ from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.qaoa_training_pipeline.pipeline import Pipeline
-from qaoa_training_pipeline.qaoa_training_pipeline.training.functions import BaseAnglesFunction, IdentityFunction
+from qaoa_training_pipeline.functions import BaseAnglesFunction, IdentityFunction
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.training.parameter_scanner import DepthOneScanTrainer
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer

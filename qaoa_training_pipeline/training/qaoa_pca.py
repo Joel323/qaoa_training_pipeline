@@ -13,7 +13,7 @@ import numpy as np
 from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.training.data_loading import DATA_LOADERS, BaseDataLoader
-from qaoa_training_pipeline.training.functions import PCAFunction
+from qaoa_training_pipeline.functions import PCAFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 
 
