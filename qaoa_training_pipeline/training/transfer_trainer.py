@@ -13,7 +13,6 @@ from time import time
 from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.pre_processing.angle_aggregation import (
     ANGLE_AGGREGATORS,
     BaseAngleAggregator,
@@ -28,7 +27,7 @@ from qaoa_training_pipeline.pre_processing.feature_matching import (
     BaseFeatureMatcher,
     TrivialFeatureMatcher,
 )
-from qaoa_training_pipeline.params_provider import ParamsProvider 
+from qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.training.data_loading import DATA_LOADERS, BaseDataLoader
 from qaoa_training_pipeline.training.param_result import ParamResult
 
@@ -93,6 +92,7 @@ class TransferTrainer(ParamsProvider):
             self._angle_aggregator = TrivialAngleAggregator()
 
     # pylint: disable=too-many-positional-arguments
+    # pylint: disable=arguments-differ
     def provide_params(
         self,
         cost_op: SparsePauliOp,
@@ -187,11 +187,6 @@ class TransferTrainer(ParamsProvider):
         feature_extractor_cls = FEATURE_EXTRACTORS[config["feature_extractor"]]
         feature_matcher_cls = FEATURE_MATCHERS[config["feature_matcher"]]
         angle_aggregator_cls = ANGLE_AGGREGATORS[config["angle_aggregator"]]
-
-        evaluator = None
-        if config["evaluator"] in EVALUATORS:
-            evaluator_cls = EVALUATORS[config["evaluator"]]
-            evaluator = evaluator_cls.from_config(config["evaluator_init"])
 
         return cls(
             data_loader=data_loader_cls.from_config(config["data_loader_init"]),

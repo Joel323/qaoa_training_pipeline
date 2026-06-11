@@ -9,7 +9,6 @@
 """Transition states trainer."""
 
 from time import time
-from typing import Union
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
@@ -37,7 +36,7 @@ class TransitionStatesTrainer(PipelineComponent):
     """
 
     def __init__(
-        self, 
+        self,
         trainer: PipelineComponent,
     ):
         """Initialize the Transition state trainer.

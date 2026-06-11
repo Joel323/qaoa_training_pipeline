@@ -57,7 +57,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
                 optimization parameters to QAOA angles.
         """
         self._evaluator = evaluator
-        self._qaoa_angles_function = qaoa_angles_function
+        ParamsProvider.__init__(self, qaoa_angles_function)
         HistoryMixin.__init__(self)
 
         # Parameters that will be filled by the scanner.
@@ -82,6 +82,7 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         return isinstance(self._extrema_locator, Argmin)
 
     # pylint: disable=too-many-positional-arguments
+    # pylint: disable=arguments-differ
     def provide_params(
         self,
         cost_op: SparsePauliOp,
@@ -243,7 +244,6 @@ class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
         }
 
 
-
 class DepthOneGammaScanTrainer(DepthOneScanTrainer):
     """Scan Gamma values and compute the optimal beta value analytically for each
     gamma as per https://arxiv.org/pdf/2501.16419 -
@@ -281,7 +281,6 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
     def train(
         self,
         cost_op: SparsePauliOp,
-        mixer=None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
         params0: list[float] | None = None,

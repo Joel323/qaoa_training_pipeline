@@ -28,10 +28,10 @@ class ReweightingTrainer(PipelineComponent):
     """Train the parameters by unweighting and reweighting the graph."""
 
     def __init__(
-        self, 
-        trainer1: PipelineComponent, 
-        trainer2: PipelineComponent | None, 
-        qaoa_angles_function: BaseAnglesFunction = IdentityFunction()
+        self,
+        trainer1: PipelineComponent,
+        trainer2: PipelineComponent | None,
+        qaoa_angles_function: BaseAnglesFunction = IdentityFunction(),
     ) -> None:
         """Initialize the instance.
 
@@ -43,7 +43,10 @@ class ReweightingTrainer(PipelineComponent):
                 first training phase is neglected. Note that if the second trainer is not given
                 the class will default to a `ScipyTrainer`.
         """
-        super().__init__(trainer1.evaluator, qaoa_angles_function=qaoa_angles_function, )
+        super().__init__(
+            trainer1.evaluator,
+            qaoa_angles_function=qaoa_angles_function,
+        )
 
         self._trainer_unweighted = trainer1
         assert isinstance(self.evaluator, BaseEvaluator)

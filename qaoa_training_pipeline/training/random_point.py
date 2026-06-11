@@ -43,7 +43,7 @@ class RandomPoint(ParamsProvider):
         self._seed = seed
         self._rng = np.random.default_rng(seed=self._seed)
 
-    # pylint: disable=too-many-positional-arguments
+    # pylint: disable=arguments-differ
     def provide_params(
         self,
         lower_bound: float | None = None,
