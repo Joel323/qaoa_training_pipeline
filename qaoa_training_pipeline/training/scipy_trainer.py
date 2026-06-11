@@ -38,7 +38,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         evaluator: BaseEvaluator,
         minimize_args: dict[str, object] | None = None,
         energy_minimization: bool = False,
-        qaoa_angles_function: BaseAnglesFunction | None = None,
+        qaoa_angles_function: BaseAnglesFunction = IdentityFunction(),
     ):
         """Initialize the trainer.
 

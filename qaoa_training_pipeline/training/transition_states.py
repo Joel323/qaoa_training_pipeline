@@ -50,7 +50,7 @@ class TransitionStatesTrainer(PipelineComponent):
             trainer: The trainer, with the evaluator inside of it, to optimize
                 the parameters starting from the right initial points.
         """
-        super().__init__(qaoa_angles_function, trainer.evaluator)
+        super().__init__(trainer.evaluator)
         self._trainer = trainer
         self._all_ts = None
 

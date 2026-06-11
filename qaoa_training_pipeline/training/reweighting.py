@@ -8,6 +8,7 @@
 
 """Trainer for weighted graphs."""
 
+from _typeshed import IdentityFunction
 from time import time
 
 import numpy as np
@@ -19,7 +20,7 @@ from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.qaoa_training_pipeline.pipeline import Pipeline
-from qaoa_training_pipeline.qaoa_training_pipeline.training.functions import BaseAnglesFunction
+from qaoa_training_pipeline.qaoa_training_pipeline.training.functions import BaseAnglesFunction, IdentityFunction
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.training.parameter_scanner import DepthOneScanTrainer
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
@@ -34,7 +35,7 @@ class ReweightingTrainer(PipelineComponent):
         self, 
         trainer1: PipelineComponent, 
         trainer2: PipelineComponent | None, 
-        qaoa_angles_function: BaseAnglesFunction | None = None
+        qaoa_angles_function: BaseAnglesFunction = IdentityFunction()
     ) -> None:
         """Initialize the instance.
 
