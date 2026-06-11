@@ -100,13 +100,11 @@ class TransferTrainer(ParamsProvider):
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
         qaoa_depth: int | None = None,
     ) -> ParamResult:
         """Performs the training."""
 
         qaoa_depth = self._require(qaoa_depth, "qaoa depth")
-        self._warn_ignored_inputs(params0=params0)
         if mixer is not None:
             raise NotImplementedError("Custom mixers are not yet supported.")
 
