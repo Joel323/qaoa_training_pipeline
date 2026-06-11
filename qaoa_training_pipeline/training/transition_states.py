@@ -42,7 +42,6 @@ class TransitionStatesTrainer(PipelineComponent):
     def __init__(
         self, 
         trainer: PipelineComponent,
-        qaoa_angles_function: BaseAnglesFunction | None = None
     ):
         """Initialize the Transition state trainer.
 

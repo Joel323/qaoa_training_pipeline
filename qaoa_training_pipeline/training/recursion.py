@@ -43,7 +43,7 @@ class RecursionTrainer(PipelineComponent):
                 points for the parameter optimization at depth `p+1`.
             trainer: The trainer must be the ScipyTrainer.
         """
-        super().__init__(trainer.qaoa_angles_function, trainer.evaluator)
+        super().__init__(trainer.evaluator, qaoa_angles_function=trainer.qaoa_angles_function, )
 
         # Takes parameters from QAOA depth p to depth p+1.
         self._parameter_extender = parameter_extender or PARAMETEREXTENDERS["extend"]

@@ -47,7 +47,7 @@ class ReweightingTrainer(PipelineComponent):
                 first training phase is neglected. Note that if the second trainer is not given
                 the class will default to a `ScipyTrainer`.
         """
-        super().__init__(qaoa_angles_function, trainer1.evaluator)
+        super().__init__(trainer1.evaluator, qaoa_angles_function=qaoa_angles_function, )
 
         self._trainer_unweighted = trainer1
         assert isinstance(self.evaluator, BaseEvaluator)

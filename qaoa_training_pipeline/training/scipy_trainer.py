@@ -54,7 +54,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
                 an instance of `BaseAnglesFunction` but we allow any callable here that maps
                 optimization parameters to QAOA angles.
         """
-        PipelineComponent.__init__(self, qaoa_angles_function, evaluator)
+        PipelineComponent.__init__(self,evaluator, qaoa_angles_function= qaoa_angles_function, )
         HistoryMixin.__init__(self)
 
 
