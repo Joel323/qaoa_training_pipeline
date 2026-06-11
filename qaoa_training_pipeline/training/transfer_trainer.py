@@ -29,12 +29,12 @@ from qaoa_training_pipeline.pre_processing.feature_matching import (
     BaseFeatureMatcher,
     TrivialFeatureMatcher,
 )
-from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+from qaoa_training_pipeline.params_provider import ParamsProvider 
 from qaoa_training_pipeline.training.data_loading import DATA_LOADERS, BaseDataLoader
 from qaoa_training_pipeline.training.param_result import ParamResult
 
 
-class TransferTrainer(BaseTrainer):
+class TransferTrainer(ParamsProvider):
     """A class to transfer parameters from a collection of parameters.
 
     The workflow allows for the following steps:
@@ -52,7 +52,6 @@ class TransferTrainer(BaseTrainer):
         feature_extractor: GraphFeatureExtractor,
         feature_matcher: BaseFeatureMatcher | None = None,
         angle_aggregator: BaseAngleAggregator | None = None,
-        evaluator: BaseEvaluator | None = None,
     ):
         """Setup a class to train based on existing data.
 
@@ -68,7 +67,7 @@ class TransferTrainer(BaseTrainer):
             evaluator: An energy evaluator. Note that not all sub-classes may require an
                 energy evaluator.
         """
-        super().__init__(evaluator)
+        super().__init__()
 
         # The data should be a dictionary in which the keys are features and the
         # values are QAOA angles corresponding to those features. The values are
@@ -94,13 +93,8 @@ class TransferTrainer(BaseTrainer):
         else:
             self._angle_aggregator = TrivialAngleAggregator()
 
-    @property
-    def minimization(self):
-        """Raises a warning as a transfer neither minimizes nor maximizes."""
-        raise ValueError(f"{self.__class__.__name__} neither minimizes nor maximizes.")
-
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
@@ -139,21 +133,13 @@ class TransferTrainer(BaseTrainer):
         # that match to the same feature key.
         qaoa_angles = self._angle_aggregator(self._data[data_key]["qaoa_angles"])
 
-        if self._evaluator is not None:
-            energy = self._evaluator.evaluate(
-                cost_op=cost_op,
-                params=qaoa_angles,
-            )
-        else:
-            energy = None
-
         if len(qaoa_angles) // 2 != qaoa_depth:
             raise ValueError(
                 f"Data in {self.__class__.__name__} returned angles for the wrong QAOA depth."
                 "Check the underlying data used in the transfer."
             )
 
-        result = ParamResult(qaoa_angles, time() - start, self, energy)
+        result = ParamResult(qaoa_angles, time() - start, self, None)
         result["data_key"] = data_key
 
         return result
@@ -163,14 +149,14 @@ class TransferTrainer(BaseTrainer):
         if not isinstance(self._data, dict):
             raise TypeError(f"{self.__class__.__name__} needs data as a dict.")
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Extract training key word arguments from a string.
 
         The input args are only the number of repetitions. The input should be of the form
         `reps:value`.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in self.parse_runtime_kwargs(kwargs_str).items():
             if key in ["qaoa_depth"]:
                 train_kwargs[key] = int(val)
             else:
@@ -194,12 +180,6 @@ class TransferTrainer(BaseTrainer):
         config["angle_aggregator_init"] = self._angle_aggregator.to_config()
 
         config["evaluator"] = "None"
-        if self._evaluator is not None:
-            config["evaluator"] = self._evaluator.__class__.__name__
-            config["evaluator_init"] = self._evaluator.to_config()
-
-            if "name" in config["evaluator_init"]:
-                del config["evaluator_init"]["name"]
 
         return config
 
@@ -221,5 +201,4 @@ class TransferTrainer(BaseTrainer):
             feature_extractor=feature_extractor_cls.from_config(config["feature_extractor_init"]),
             feature_matcher=feature_matcher_cls.from_config(config["feature_matcher_init"]),
             angle_aggregator=angle_aggregator_cls.from_config(config["angle_aggregator_init"]),
-            evaluator=evaluator,
         )
