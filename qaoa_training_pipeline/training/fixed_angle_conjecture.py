@@ -17,18 +17,15 @@ import numpy as np
 
 # cspell: ignore reportviews
 from networkx.classes.reportviews import DegreeView
-from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.evaluation import EVALUATORS
-from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
-from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+from qaoa_training_pipeline.params_provider import ParamsProvider
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.utils.graph_utils import operator_to_graph
 
 
 # cspell: ignore Wurtz Danylo Lykov
-class FixedAngleConjecture(BaseTrainer):
+class FixedAngleConjecture(ParamsProvider):
     """Fixed angle conjecture.
 
     This class is an interface to load the known angles of the fixed angle conjecture.
@@ -47,35 +44,24 @@ class FixedAngleConjecture(BaseTrainer):
     ratios that can be obtained in practice.
     """
 
-    def __init__(self, evaluator: BaseEvaluator | None = None):
+    def __init__(self):
         """Setup the class and load the parameters.
 
         Args:
             evaluator: If an evaluator is provided the energy of the cost operator at the fixed
                 angles will be evaluated and included in the result of `train`.
         """
-        super().__init__(evaluator)
+        super().__init__()
 
         self._data: dict[str, dict] | None = None
         data_path = os.path.join(os.path.dirname(__file__), "data", "fixed_angle_conjecture.json")
         with open(data_path, "r") as fin:
             self._data = json.load(fin)
 
-    @property
-    def minimization(self) -> bool:
-        """Return True if the energy is minimized."""
-        raise NotImplementedError(
-            f"Optimization is currently not implemented by {self.__class__.__name__}."
-        )
-
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def run(
         self,
         cost_op: SparsePauliOp,
-        mixer: QuantumCircuit | None = None,
-        initial_state: QuantumCircuit | None = None,
-        ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
         reps: int = 1,
         degree: int | None = None,
     ) -> ParamResult:
@@ -96,10 +82,6 @@ class FixedAngleConjecture(BaseTrainer):
             initial_state: Not used.
             ansatz_circuit: Not used.
         """
-
-        self._warn_ignored_inputs(
-            mixer=mixer, initial_state=initial_state, ansatz_circuit=ansatz_circuit, params0=params0
-        )
 
         start = time()
 
@@ -130,18 +112,12 @@ class FixedAngleConjecture(BaseTrainer):
 
         angles_data = self._data[degree_key][str(reps)]
 
-        energy = None
-        if self._evaluator is not None:
-            energy = self._evaluator.evaluate(
-                cost_op=cost_op,
-                params=angles_data["beta"] + angles_data["gamma"],
-            )
 
         param_result = ParamResult(
             angles_data["beta"] + angles_data["gamma"],
             time() - start,
             self,
-            energy,
+            None,
         )
 
         param_result["approximation ratio"] = angles_data["AR"]
@@ -152,12 +128,7 @@ class FixedAngleConjecture(BaseTrainer):
     @classmethod
     def from_config(cls, config: dict) -> "FixedAngleConjecture":
         """Create a class from a config."""
-        evaluator = None
-        if "evaluator" in config:
-            evaluator_cls = EVALUATORS[config["evaluator"]]
-            evaluator = evaluator_cls.from_config(config["evaluator_init"])
-
-        return cls(evaluator)
+        return cls()
 
     def to_config(self) -> dict:
         """Creates a serializable dictionary to keep track of how results are created.
@@ -166,10 +137,9 @@ class FixedAngleConjecture(BaseTrainer):
         """
         return {
             "trainer_name": self.__class__.__name__,
-            "evaluator": None,
         }
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Extract training key word arguments from a string.
 
         Args:
@@ -178,7 +148,7 @@ class FixedAngleConjecture(BaseTrainer):
             degree is desired then do not provide it and it will be inferred from the graph.
         """
         train_kwargs = dict()
-        for key, val in self.extract_train_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key in ["reps", "degree"]:
                 train_kwargs[key] = int(val)
             else:
