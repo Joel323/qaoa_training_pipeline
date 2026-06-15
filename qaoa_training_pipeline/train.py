@@ -300,8 +300,8 @@ def train(args: argparse.Namespace):
 
         return all_results
     else:
-        pipeline = Pipeline.from_config(full_config)
-        result = pipeline.execute(input_problem)
+        pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
+        result = pipeline.execute(provider_args, component_args)
 
 
 if __name__ == "__main__":
