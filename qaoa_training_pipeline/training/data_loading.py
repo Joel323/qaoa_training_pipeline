@@ -10,6 +10,7 @@
 
 from abc import ABC, abstractmethod
 import json
+import numpy as np
 
 
 class BaseDataLoader(ABC):
@@ -111,7 +112,7 @@ class LoadFromJson(BaseDataLoader):
                 # Transform angles to TransferTrainer format
                 if "beta" in angles_dict and "gamma" in angles_dict:
                     qaoa_angles = angles_dict["beta"] + angles_dict["gamma"]
-                    data[tuple_key] = {"qaoa_angles": qaoa_angles}
+                    data[tuple_key] = {"qaoa_angles": np.atleast_2d(qaoa_angles)}
                     
                     # Preserve additional metadata if present
                     if "AR" in angles_dict:
@@ -143,7 +144,7 @@ class LoadFromJson(BaseDataLoader):
     @classmethod
     def from_config(cls, config) -> "LoadFromJson":
         """Setup the loader from a config file."""
-        return cls(config["file_name"])
+        return cls(config["file_name"], config["nested"])
 
 
 DATA_LOADERS = {

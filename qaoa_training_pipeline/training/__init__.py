@@ -7,7 +7,6 @@
 # that they have been altered from the originals.
 
 """This module collects all the methods to train the parameters of a QAOA circuit."""
-from .fixed_angle_conjecture import FixedAngleConjecture
 from .models.random_regular_fit import RandomRegularDepthOneFit
 from .optimized_parameter_loader import OptimizedParametersLoader
 from .parameter_scanner import DepthOneScanTrainer, DepthOneGammaScanTrainer
@@ -17,14 +16,12 @@ from .recursion import RecursionTrainer
 from .recursive_transition_states import RecursiveTransitionStates
 from .reweighting import ReweightingTrainer
 from .scipy_trainer import ScipyTrainer
-from .tqa_trainer import TQATrainer
 from .transfer_trainer import TransferTrainer
 from .transition_states import TransitionStatesTrainer
 
 
 TRAINERS = {
     "DepthOneScanTrainer": DepthOneScanTrainer,
-    "FixedAngleConjecture": FixedAngleConjecture,
     "OptimizedParametersLoader": OptimizedParametersLoader,
     "QAOAPCA": QAOAPCA,
     "ScipyTrainer": ScipyTrainer,
@@ -33,17 +30,17 @@ TRAINERS = {
     "RecursionTrainer": RecursionTrainer,
     "RecursiveTransitionStates": RecursiveTransitionStates,
     "ReweightingTrainer": ReweightingTrainer,
-    "TQATrainer": TQATrainer,
     "TransferTrainer": TransferTrainer,
     "TransitionStatesTrainer": TransitionStatesTrainer,
     "DepthOneGammaScanTrainer": DepthOneGammaScanTrainer,
 }
 PARAMS_PROVIDERS = {
     "DepthOneScanTrainer": DepthOneScanTrainer,
-    "FixedAngleConjecture": FixedAngleConjecture,
     "OptimizedParametersLoader": OptimizedParametersLoader,
     "RandomPoint": RandomPoint,
+    "TransferTrainer": TransferTrainer,
     "RandomRegularDepthOneFit": RandomRegularDepthOneFit,
+    "ScipyTrainer": ScipyTrainer,
 }
 
 PIPELINE_COMPONENTS = {
@@ -51,6 +48,5 @@ PIPELINE_COMPONENTS = {
     "RecursiveTransitionStates": RecursiveTransitionStates,
     "ReweightingTrainer": ReweightingTrainer,
     "ScipyTrainer": ScipyTrainer,
-    "TransferTrainer": TransferTrainer,
     "TransitionStatesTrainer": TransitionStatesTrainer,
 }

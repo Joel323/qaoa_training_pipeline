@@ -99,11 +99,11 @@ class TransferTrainer(ParamsProvider):
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        qaoa_depth: int | None = None,
+        reps: int | None = None,
     ) -> ParamResult:
         """Performs the training."""
 
-        qaoa_depth = self._require(qaoa_depth, "qaoa depth")
+        qaoa_depth = self._require(reps, "qaoa depth")
         if mixer is not None:
             raise NotImplementedError("Custom mixers are not yet supported.")
 
@@ -129,7 +129,6 @@ class TransferTrainer(ParamsProvider):
         # of the angles while the second one can correspond to multiple cost operators
         # that match to the same feature key.
         qaoa_angles = self._angle_aggregator(self._data[data_key]["qaoa_angles"])
-
         if len(qaoa_angles) // 2 != qaoa_depth:
             raise ValueError(
                 f"Data in {self.__class__.__name__} returned angles for the wrong QAOA depth."
@@ -153,8 +152,8 @@ class TransferTrainer(ParamsProvider):
         `reps:value`.
         """
         train_kwargs = dict()
-        for key, val in self.parse_runtime_kwargs(kwargs_str).items():
-            if key in ["qaoa_depth"]:
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
+            if key in ["reps"]:
                 train_kwargs[key] = int(val)
             else:
                 raise ValueError("Unknown key in provided train_kwargs.")
