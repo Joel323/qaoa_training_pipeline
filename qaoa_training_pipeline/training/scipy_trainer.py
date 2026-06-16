@@ -76,7 +76,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         return self._sign == 1
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp | None = None,
         mixer: QuantumCircuit | None = None,

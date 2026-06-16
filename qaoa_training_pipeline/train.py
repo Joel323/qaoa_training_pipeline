@@ -111,6 +111,14 @@ def get_script_args():
         help="The directory where to save the data relative to the caller location.",
     )
 
+    parser.add_argument(
+        "--provider_kwargs",
+        required=False,
+        default="",
+        type=str,
+        help="Arguments for the initial ParamsProvider.",
+    )
+
     for idx in range(10):
         help_str = f"A string specifying the train kwargs of trainer {idx}. "
         help_str += "To see how this is used go and check the parse_kwargs method in the trainer."
@@ -168,6 +176,7 @@ def train(args: argparse.Namespace):
     # Load and optionally pre-process the input.
     input_data = load_input(args.input)
 
+    # Pre-process the input data if needed.
     pre_processing, pre_processor = getattr(args, "pre_processing", None), None
     if pre_processing is not None:
         pre_processing_info = pre_processing.split(":")
@@ -201,108 +210,37 @@ def train(args: argparse.Namespace):
         pre_factor = pre_factor or 1.0
         input_problem = input_to_operator(input_data, pre_factor=pre_factor)
 
-    # Load the training config and prepare the trainer.
+    # Load the pipeline config
     with open(args.config, "r") as fin:
         full_config = json.load(fin)
 
+    save_file = getattr(args, "save_file", None)
+    all_results = {}
 
-    if "trainer_chain" in full_config:
+    #Create the pipeline from config and prepare runtime arguments
+    pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
+    #Execute the pipeline with given argiuments
+    pipeline.execute(provider_args, component_args, all_results)
 
-        trainer_chain_config = full_config["trainer_chain"]
-
-        all_results, result = {}, {}
-
-        all_results["args"] = vars(args)
-
-        if pre_processor is not None:
-            all_results["pre_processing"] = pre_processor.to_config()
+    #Save the results if needed
+    if args.save:
+        date_tag = datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")
+        if save_file is None:
+            save_file_local = date_tag + "_" + full_config["save_file"]
         else:
-            all_results["pre_processing"] = None
+            save_file_local = date_tag + "_" + save_file
 
-        # Convert to real for serialization since optimization problems are a diagonal Hc.
-        all_results["cost_operator"] = [(item, np.real(c)) for item, c in input_problem.to_list()]
+        if not os.path.exists(args.save_dir) and args.save_dir != "":
+            os.makedirs(args.save_dir)
 
-        # Save files specified from the cmd line override file names in the json config.
-        save_file = getattr(args, "save_file", None)
+        with open(args.save_dir + save_file_local, "w") as f_out:
+            save_data = dict()
+            for k, v in all_results.items():
+                save_data[k] = v.data if isinstance(v, ParamResult) else v
 
-        # Create Pipeline object
-
-        # Loop over all the trainers.
-        for train_idx, conf in enumerate(trainer_chain_config):
-            trainer_name = conf["trainer"]
-
-            # Parse evaluator init key-word arguments given at runtime.
-            evaluator_init_kwargs_str = getattr(args, f"evaluator_init_kwargs{train_idx}")
-            if evaluator_init_kwargs_str is not None:
-                # Handle standard trainers and recursive trainers (nested)
-                trainer_init = conf["trainer_init"]
-                target_init = None
-
-                if "evaluator" in trainer_init:
-                    target_init = trainer_init
-                elif "trainer_init" in trainer_init and "evaluator" in trainer_init["trainer_init"]:
-                    target_init = trainer_init["trainer_init"]
-
-                if target_init:
-                    evaluator_cls = EVALUATORS[target_init["evaluator"]]
-                    evaluator_init = target_init.get("evaluator_init", dict())
-                    evaluator_init.update(evaluator_cls.parse_init_kwargs(evaluator_init_kwargs_str))
-                    target_init["evaluator_init"] = evaluator_init
-                else:
-                    raise ValueError(
-                        f"evaluator_init_kwargs{train_idx} given but no evaluator "
-                        f"in trainer {trainer_name}."
-                    )
-
-            trainer_cls = TRAINERS[trainer_name]
-            trainer = trainer_cls.from_config(conf["trainer_init"])
-
-            # Hook to deserialize any input to train that was serialized.
-            prepare_train_kwargs(conf)
-
-            # Get train args based on last result (if any).
-            train_kwargs = conf["train_kwargs"]
-            if len(result) > 0 and "result" in train_kwargs:
-                for result_key, arg_name in train_kwargs["result"].items():
-                    train_kwargs[arg_name] = result[result_key]
-
-                train_kwargs.pop("result")
-
-            # Allows us to pass training key-word arguments at runtime.
-            if hasattr(args, f"train_kwargs{train_idx}"):
-                train_args_str = getattr(args, f"train_kwargs{train_idx}")
-                cmd_train_kwargs = trainer.parse_runtime_kwargs(train_args_str)
-                train_kwargs.update(cmd_train_kwargs)
-
-            # Perform the optimization.
-            result = trainer.provide_params(input_problem, **train_kwargs)
-
-            all_results[train_idx] = result
-
-            if args.save:
-                # Prepare the file where to save the result
-                date_tag = datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")
-                if save_file is None:
-                    save_file_local = date_tag + "_" + conf.pop("save_file")
-                else:
-                    save_file_local = date_tag + "_" + save_file
-
-                # If the directory is not existent, creates it
-                if not os.path.exists(args.save_dir) and args.save_dir != "":
-                    os.makedirs(args.save_dir)
-
-                with open(args.save_dir + save_file_local, "w") as f_out:
-                    save_data = dict()
-                    for k, v in all_results.items():
-                        save_data[k] = v.data if isinstance(v, ParamResult) else v
-
-                    json.dump(save_data, f_out, indent=4)
-
-        return all_results
-    else:
-        pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
-        result = pipeline.execute(provider_args, component_args)
-
+            json.dump(save_data, f_out, indent=4)
+            
+    return all_results
 
 if __name__ == "__main__":
     script_args, _ = get_script_args()

@@ -59,7 +59,7 @@ class FixedAngleConjecture(ParamsProvider):
             self._data = json.load(fin)
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         reps: int = 1,

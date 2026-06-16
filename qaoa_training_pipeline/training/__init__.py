@@ -38,3 +38,19 @@ TRAINERS = {
     "TransitionStatesTrainer": TransitionStatesTrainer,
     "DepthOneGammaScanTrainer": DepthOneGammaScanTrainer,
 }
+PARAMS_PROVIDERS = {
+    "DepthOneScanTrainer": DepthOneScanTrainer,
+    "FixedAngleConjecture": FixedAngleConjecture,
+    "OptimizedParametersLoader": OptimizedParametersLoader,
+    "RandomPoint": RandomPoint,
+    "RandomRegularDepthOneFit": RandomRegularDepthOneFit,
+}
+
+PIPELINE_COMPONENTS = {
+    "RecursionTrainer": RecursionTrainer,
+    "RecursiveTransitionStates": RecursiveTransitionStates,
+    "ReweightingTrainer": ReweightingTrainer,
+    "ScipyTrainer": ScipyTrainer,
+    "TransferTrainer": TransferTrainer,
+    "TransitionStatesTrainer": TransitionStatesTrainer,
+}
