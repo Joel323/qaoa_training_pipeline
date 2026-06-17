@@ -1,0 +1,22 @@
+{
+    "params_provider": {
+        "provider_name": "ScipyTrainer",
+        "provider_init": {
+            "evaluator": "EfficientDepthOneEvaluator",
+            "evaluator_init": {},
+            "qaoa_angles_function": "TQATrainerFunction",
+            "qaoa_angles_function_init": {"schedule": "tqa_schedule", "reps":1},
+            "minimize_args": {"options": {"maxiter": 100, "rhobeg": 0.2}}
+    }
+    },
+    "pipeline_components": [
+        {
+            "component_name": "ScipyTrainer",
+            "component_init": {
+                "evaluator": "EfficientDepthOneEvaluator",
+                "evaluator_init": {},
+                "minimize_args": {"options": {"maxiter": 100, "rhobeg": 0.2}}
+            }
+        }
+    ]
+}
