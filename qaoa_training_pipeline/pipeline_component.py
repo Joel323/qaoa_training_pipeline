@@ -54,15 +54,15 @@ class PipelineComponent(ParamsProvider):
     ):
         """Initialize the pipeline component.
 
-        Args:
-<<<<<<< HEAD
-            evaluator: evaluator for assessing parameter quality during optimization.
+                Args:
+        <<<<<<< HEAD
+                    evaluator: evaluator for assessing parameter quality during optimization.
 
-=======
-            evaluator: evaluator for assessing parameter quality during optimization. 
->>>>>>> refactor_params_loader
-            qaoa_angles_function: Optional function to transform QAOA angles. If None,
-                uses IdentityFunction (no transformation).
+        =======
+                    evaluator: evaluator for assessing parameter quality during optimization.
+        >>>>>>> refactor_params_loader
+                    qaoa_angles_function: Optional function to transform QAOA angles. If None,
+                        uses IdentityFunction (no transformation).
         """
 
         super().__init__(qaoa_angles_function)
@@ -90,30 +90,30 @@ class PipelineComponent(ParamsProvider):
     ) -> ParamResult:
         """Execute the optimization method to improve QAOA angles.
 
-        This abstract method must be implemented by subclasses to define their specific
-        optimization or training strategy. It receives the problem definition and initial
-        parameters, then applies an optimization method to improve them.
+                This abstract method must be implemented by subclasses to define their specific
+                optimization or training strategy. It receives the problem definition and initial
+                parameters, then applies an optimization method to improve them.
 
-        Args:
-            cost_op: The cost Hamiltonian as a sparse Pauli operator, defining the
-            optimization problem.
-            mixer: Quantum circuit representing the mixer Hamiltonian (typically X mixer).
-            initial_state: Quantum circuit preparing the initial state (typically |+⟩^n).
-            ansatz_circuit: Parameterized quantum circuit representing the QAOA ansatz.
-<<<<<<< HEAD
-            params0: Initial QAOA angles to be optimized.
+                Args:
+                    cost_op: The cost Hamiltonian as a sparse Pauli operator, defining the
+                    optimization problem.
+                    mixer: Quantum circuit representing the mixer Hamiltonian (typically X mixer).
+                    initial_state: Quantum circuit preparing the initial state (typically |+⟩^n).
+                    ansatz_circuit: Parameterized quantum circuit representing the QAOA ansatz.
+        <<<<<<< HEAD
+                    params0: Initial QAOA angles to be optimized.
 
-=======
-            params0: Initial QAOA angles to be optimized. They are expected to be in the format 
-                [β1, ..., βp, γ1, ..., γp].
-        
->>>>>>> refactor_params_loader
-        Returns:
-            ParamResult object containing the optimized angles and associated metadata
-            (e.g., optimization history, final energy,...).
+        =======
+                    params0: Initial QAOA angles to be optimized. They are expected to be in the format
+                        [β1, ..., βp, γ1, ..., γp].
 
-        Raises:
-            NotImplementedError: If the subclass does not implement this method.
+        >>>>>>> refactor_params_loader
+                Returns:
+                    ParamResult object containing the optimized angles and associated metadata
+                    (e.g., optimization history, final energy,...).
+
+                Raises:
+                    NotImplementedError: If the subclass does not implement this method.
         """
         raise NotImplementedError("Sub-classes must implement `provide_params`.")
 

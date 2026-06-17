@@ -298,6 +298,7 @@ class PCAFunction(BaseAnglesFunction):
 
         return pca_func
 
+
 class TQATrainerFunction(BaseAnglesFunction):
     """Wrapper function around TQATrainer.tqa_schedule.
 
@@ -317,7 +318,9 @@ class TQATrainerFunction(BaseAnglesFunction):
                 in :meth:`__call__`, an error is raised. Defaults to None.
         """
         super().__init__()
-        self._tqa_schedule = self.tqa_schedule if tqa_schedule_method == "tqa_schedule" else self.lr_schedule
+        self._tqa_schedule = (
+            self.tqa_schedule if tqa_schedule_method == "tqa_schedule" else self.lr_schedule
+        )
         self.reps = reps
 
     # pylint: disable=unused-argument
@@ -356,6 +359,7 @@ class TQATrainerFunction(BaseAnglesFunction):
     def from_config(cls, config: dict) -> None:
         """Create a TQATrainer from a config dictionary."""
         return cls(config["schedule"], config["reps"])
+
 
 FUNCTIONS = {
     "IdentityFunction": IdentityFunction,
