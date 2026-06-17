@@ -46,7 +46,6 @@ class RecursiveTransitionStates(PipelineComponent):
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
         previous_optimal_point: list[float] | None = None,
         reps: int | None = None,
     ) -> ParamResult:

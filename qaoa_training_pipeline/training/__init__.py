@@ -20,20 +20,6 @@ from .transfer_trainer import TransferTrainer
 from .transition_states import TransitionStatesTrainer
 
 
-TRAINERS = {
-    "DepthOneScanTrainer": DepthOneScanTrainer,
-    "OptimizedParametersLoader": OptimizedParametersLoader,
-    "QAOAPCA": QAOAPCA,
-    "ScipyTrainer": ScipyTrainer,
-    "RandomPoint": RandomPoint,
-    "RandomRegularDepthOneFit": RandomRegularDepthOneFit,
-    "RecursionTrainer": RecursionTrainer,
-    "RecursiveTransitionStates": RecursiveTransitionStates,
-    "ReweightingTrainer": ReweightingTrainer,
-    "TransferTrainer": TransferTrainer,
-    "TransitionStatesTrainer": TransitionStatesTrainer,
-    "DepthOneGammaScanTrainer": DepthOneGammaScanTrainer,
-}
 PARAMS_PROVIDERS = {
     "DepthOneScanTrainer": DepthOneScanTrainer,
     "OptimizedParametersLoader": OptimizedParametersLoader,
@@ -41,6 +27,7 @@ PARAMS_PROVIDERS = {
     "TransferTrainer": TransferTrainer,
     "RandomRegularDepthOneFit": RandomRegularDepthOneFit,
     "ScipyTrainer": ScipyTrainer,
+    "DepthOneGammaScanTrainer": DepthOneGammaScanTrainer,
 }
 
 PIPELINE_COMPONENTS = {
@@ -49,4 +36,5 @@ PIPELINE_COMPONENTS = {
     "ReweightingTrainer": ReweightingTrainer,
     "ScipyTrainer": ScipyTrainer,
     "TransitionStatesTrainer": TransitionStatesTrainer,
+    "QAOAPCA": QAOAPCA,
 }

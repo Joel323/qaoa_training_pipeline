@@ -20,6 +20,7 @@ from qaoa_training_pipeline.training.param_result import ParamResult
 
 class OptimizedParametersLoader(ParamsProvider):
     """Class to load parameters from a file."""
+
     # pylint: disable=arguments-differ
     def provide_params(
         self,

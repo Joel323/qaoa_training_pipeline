@@ -43,6 +43,8 @@ class TransferTrainer(ParamsProvider):
     3. Aggregate the selected angles into a set of single QAOA angles.
     """
 
+    requires_cost_op = True
+
     # pylint: disable=too-many-positional-arguments
     def __init__(
         self,

@@ -9,7 +9,6 @@
 """Functions for angle trainers."""
 
 from abc import ABC, abstractmethod
-from collections.abc import Callable
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes

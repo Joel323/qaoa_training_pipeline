@@ -33,6 +33,8 @@ from qaoa_training_pipeline.training.param_result import ParamResult
 class ScipyTrainer(PipelineComponent, HistoryMixin):
     """A trainer that wraps SciPy's minimize function."""
 
+    requires_cost_op = True
+
     def __init__(
         self,
         evaluator: BaseEvaluator,
@@ -102,7 +104,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
 
         start = time()
 
-        def _energy(x):
+        def _energy(x) -> float:
             """Maximize the energy by minimizing the negative energy."""
             estart = time()
 
@@ -142,7 +144,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         axis: Axes | None = None,
         fig: Figure | None = None,
         **plot_args,
-    ):
+    ) -> tuple[Figure, Axes]:
         """Plot the energy history.
 
         Args:

@@ -38,6 +38,8 @@ from qaoa_training_pipeline.utils.graph_utils import operator_to_graph
 class DepthOneScanTrainer(ParamsProvider, HistoryMixin):
     """Scan the param2 and param1 parameters of QAOA."""
 
+    requires_cost_op = True
+
     def __init__(
         self,
         evaluator: BaseEvaluator,

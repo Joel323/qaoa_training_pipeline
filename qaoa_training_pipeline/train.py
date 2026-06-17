@@ -27,18 +27,15 @@ import argparse
 from datetime import datetime
 import os
 import json
-import numpy as np
 
 from qaoa_training_pipeline.utils.data_utils import load_input, input_to_operator
-from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.pre_processing import PREPROCESSORS
-from qaoa_training_pipeline.training import TRAINERS
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.utils.problem_classes import PROBLEM_CLASSES
 from qaoa_training_pipeline.pipeline import Pipeline
 
 
-def get_script_args():
+def get_script_args() -> tuple[argparse.Namespace, list]:
     """Get the command line input arguments."""
 
     parser = argparse.ArgumentParser()
@@ -145,7 +142,7 @@ def get_script_args():
     return run_args, additional_args
 
 
-def prepare_train_kwargs(config: dict):
+def prepare_train_kwargs(config: dict) -> None:
     """Deserialize the input arguments for the train function.
 
     This is a hook that will allow us to prepare the input arguments to the train
@@ -157,7 +154,7 @@ def prepare_train_kwargs(config: dict):
             raise NotImplementedError(f"Serialization is not yet implemented for {name}.")
 
 
-def train(args: argparse.Namespace):
+def train(args: argparse.Namespace) -> dict:
     """Main function that does the training.
 
     The training is configurable based on system inputs. Use the `help` function to get
@@ -217,12 +214,12 @@ def train(args: argparse.Namespace):
     save_file = getattr(args, "save_file", None)
     all_results = {}
 
-    #Create the pipeline from config and prepare runtime arguments
+    # Create the pipeline from config and prepare runtime arguments
     pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
-    #Execute the pipeline with given argiuments
+    # Execute the pipeline with given argiuments
     pipeline.execute(provider_args, component_args, all_results)
 
-    #Save the results if needed
+    # Save the results if needed
     if args.save:
         date_tag = datetime.strftime(datetime.now(), "%Y%m%d_%H%M%S")
         if save_file is None:
@@ -239,8 +236,9 @@ def train(args: argparse.Namespace):
                 save_data[k] = v.data if isinstance(v, ParamResult) else v
 
             json.dump(save_data, f_out, indent=4)
-            
+
     return all_results
+
 
 if __name__ == "__main__":
     script_args, _ = get_script_args()
