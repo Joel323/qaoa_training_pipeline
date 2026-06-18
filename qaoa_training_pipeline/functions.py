@@ -20,7 +20,7 @@ class BaseAnglesFunction(ABC):
     """A base class to define the interface of QAOA angle functions."""
 
     @abstractmethod
-    def __call__(self, x: list) -> list:
+    def __call__(self, x: list, **kwargs) -> list:
         """Compute the QAOA angles from the optimization variables x."""
 
     def to_config(self) -> dict:
@@ -36,7 +36,7 @@ class BaseAnglesFunction(ABC):
 class IdentityFunction(BaseAnglesFunction):
     """Identity function."""
 
-    def __call__(self, x: list) -> list:
+    def __call__(self, x: list, **kwargs) -> list:
         """Identity function."""
         return x
 
@@ -70,7 +70,7 @@ class FourierFunction(BaseAnglesFunction):
         """
         self._depth = depth
 
-    def __call__(self, x: list) -> list:
+    def __call__(self, x: list, **kwargs) -> list:
         """Compute beta and gamma angles from the optimization variables x.
 
         We assume that the first half of `x` are the Fourier coefficients for `beta` and the
@@ -218,7 +218,7 @@ class PCAFunction(BaseAnglesFunction):
         self._pca.fit(data_)
         self._is_fitted = True
 
-    def __call__(self, x: list) -> list:
+    def __call__(self, x: list, **kwargs) -> list:
         """Compute the QAOA angles from the principal components.
 
         Here, `x` is a list of floats with the same length as the number of PCA components.
@@ -324,21 +324,21 @@ class TQATrainerFunction(BaseAnglesFunction):
         self.reps = reps
 
     # pylint: disable=unused-argument
-    def __call__(self, x: list, reps: int | None = None) -> list:
+    def __call__(self, x: list, **kwargs) -> list:
         """Call the TQATrainer QAOA angles function with the corresponding TQA schedule.
 
         Args:
             x: the linear ramps for the schedule
             reps: The QAOA circuit depth
         """
-        if reps is None:
-            reps = self.reps
+
+        reps = kwargs.get("reps")
         if reps is None:
             raise ValueError(
                 f"reps must be provided to {self.__class__.__name__}(reps=...) or "
                 + "set with trainer.train(..., reps=...)"
             )
-        return self._tqa_schedule(reps=reps, dt=x)
+        return self._tqa_schedule(reps=int(reps), dt=x)
 
     @staticmethod
     def tqa_schedule(reps: int, dt: tuple[float] | float) -> np.ndarray:
@@ -358,7 +358,7 @@ class TQATrainerFunction(BaseAnglesFunction):
     @classmethod
     def from_config(cls, config: dict) -> None:
         """Create a TQATrainer from a config dictionary."""
-        return cls(config["schedule"], config["reps"])
+        return cls(config["schedule"])
 
 
 FUNCTIONS = {
