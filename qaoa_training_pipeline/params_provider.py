@@ -28,7 +28,7 @@ import warnings
 from typing import TypeVar
 
 from qaoa_training_pipeline.training.param_result import ParamResult
-from qaoa_training_pipeline.functions import (
+from qaoa_training_pipeline.training.functions import (
     BaseAnglesFunction,
     IdentityFunction,
 )
@@ -58,6 +58,7 @@ class ParamsProvider(ABC):
 
     def __init__(
         self,
+        *,
         qaoa_angles_function: BaseAnglesFunction | None = None,
     ):
         """Initialize the parameter provider.
@@ -78,7 +79,7 @@ class ParamsProvider(ABC):
         return self._qaoa_angles_function
 
     @abstractmethod
-    def provide_params(self, *args, **kwargs) -> ParamResult:
+    def provide_params(self) -> ParamResult:
         """Provide QAOA angles to the next element in the pipeline.
 
         This abstract method must be implemented by subclasses to define how QAOA
