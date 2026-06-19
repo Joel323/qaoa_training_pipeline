@@ -20,12 +20,21 @@ from qaoa_training_pipeline.training.param_result import ParamResult
 
 class OptimizedParametersLoader(ParamsProvider):
     """Class to load parameters from a file."""
+    
+    def __init__(
+        self,
+        folder: str | None = None,
+        file_pattern: str | None = None,
+    ):
+
+        super().__init__()
+
+        self._folder = folder
+        self._file_pattern = file_pattern
 
     # pylint: disable=arguments-differ
     def provide_params(
         self,
-        folder: str | None = None,
-        file_pattern: str | None = None,
     ) -> ParamResult:
         """Load from a file.
 
@@ -38,8 +47,8 @@ class OptimizedParametersLoader(ParamsProvider):
             file_pattern: The pattern to match to identify the file. This is a simple
                 if file_pattern in file_name then load the data in the file.
         """
-        folder = self._require(folder, "folder name")
-        file_pattern = self._require(file_pattern, "file pattern")
+        folder = self._require(self._folder, "folder name")
+        file_pattern = self._require(self._file_pattern, "file pattern")
 
         # 1. look for the file in the folder
         data, loaded_file_name = None, None
