@@ -27,6 +27,7 @@ class RandomPoint(ParamsProvider):
         lower_bound: float = 0,
         upper_bound: float = np.pi,
         seed: int | None = None,
+        reps: int | None = None,
     ) -> None:
         """Setup an instance to generate random initial points.
 
@@ -37,19 +38,20 @@ class RandomPoint(ParamsProvider):
                 value defaults to pi.
             seed: Optional argument. If given this sets the seed of the rng generator.
         """
-        super().__init__(None)
+        super().__init__()
+        reps = self._require(reps, "reps")
+        lower_bound = self._require(lower_bound, "lower_bound")
+        upper_bound = self._require(upper_bound, "upper_bound")
+        seed = self._require(seed, "seed")
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
         self._seed = seed
+        self._reps = reps
         self._rng = np.random.default_rng(seed=self._seed)
 
     # pylint: disable=arguments-differ
     def provide_params(
         self,
-        lower_bound: float | None = None,
-        upper_bound: float | None = None,
-        seed: int | None = None,
-        reps: int | None = None,
     ) -> ParamResult:
         """Return a random initial point.
 
@@ -64,18 +66,18 @@ class RandomPoint(ParamsProvider):
                 given then we use a random number generator initialized with this seed. Note
                 the the rng defined at initialization is not changed.
         """
-        reps = self._require(reps, "reps")
+
         start = time()
 
-        lb_ = lower_bound or self._lower_bound
-        ub_ = upper_bound or self._upper_bound
+        lb_ = self._lower_bound
+        ub_ =  self._upper_bound
 
-        if seed is not None:
-            rng = np.random.default_rng(seed=seed)
+        if self._seed is not None:
+            rng = np.random.default_rng(seed=self._seed)
         else:
             rng = self._rng
 
-        params = [float(val) for val in rng.uniform(lb_, ub_, 2 * reps)]
+        params = [float(val) for val in rng.uniform(lb_, ub_, 2 * self._reps)]
 
         param_result = ParamResult(params, time() - start, self, None)
         param_result["note"] = f"The parameters are uniformly generated with seed {self._seed}."
