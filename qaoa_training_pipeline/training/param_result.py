@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from qaoa_training_pipeline.training.history_mixin import HistoryMixin
 
 if TYPE_CHECKING:
-    from qaoa_training_pipeline.training.base_trainer import BaseTrainer
+    from qaoa_training_pipeline.params_provider import ParamsProvider
 
 
 @dataclass
@@ -35,7 +35,7 @@ class ParamResult:
         self,
         optimized_params: list,
         duration: float,
-        trainer: "BaseTrainer",
+        trainer: "ParamsProvider",
         energy: float | None = None,
     ):
         """Initialize the data class."""

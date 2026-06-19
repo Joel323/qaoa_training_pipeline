@@ -17,7 +17,7 @@ from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.pipeline_component import PipelineComponent
-from qaoa_training_pipeline.functions import BaseAnglesFunction, IdentityFunction
+from qaoa_training_pipeline.training.functions import BaseAnglesFunction, IdentityFunction
 from qaoa_training_pipeline.training.param_result import ParamResult
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.training.transition_states import TransitionStatesTrainer
