@@ -29,6 +29,7 @@ class TQATrainer(ScipyTrainer):
     def __init__(
         self,
         evaluator: BaseEvaluator,
+        reps: int,
         minimize_args: dict[str, object] | None = None,
         energy_minimization: bool = False,
     ):
@@ -36,11 +37,18 @@ class TQATrainer(ScipyTrainer):
 
         Args:
             evaluator: The energy evaluator to compute the energy at each optimization step
+            reps: the QAOA circuit depth.
             minimize_args: Arguments that will be passed to SciPy's `minimize`.
             energy_minimization: Allows us to switch between minimizing the energy or maximizing
                 the energy. The default and assumed convention in this repository is to
                 maximize the energy.
         """
         super().__init__(
-            evaluator, minimize_args, energy_minimization, TQATrainerFunction("tqa_schedule")
+            evaluator,
+            minimize_args,
+            energy_minimization,
+            TQATrainerFunction(
+                reps=reps,
+                tqa_schedule_method="tqa_schedule",
+            ),
         )

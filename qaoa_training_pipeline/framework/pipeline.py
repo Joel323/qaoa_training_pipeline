@@ -11,9 +11,9 @@
 
 This module defines the Pipeline class, which orchestrates the execution of QAOA parameter
 generation and optimization workflows via a combination of an initial ParamsProvider with
-a sequence of PipelineComponents to allow the creation of complex, multi-stage QAOA angles 
-generation strategies. The class is flexible and allows users to compose QAOA training 
-pipelines that include different optimization and heuristic strategies tailored to specific 
+a sequence of PipelineComponents to allow the creation of complex, multi-stage QAOA angles
+generation strategies. The class is flexible and allows users to compose QAOA training
+pipelines that include different optimization and heuristic strategies tailored to specific
 problem requirements.
 
 Example:
@@ -30,9 +30,9 @@ from qaoa_training_pipeline.training import (
     PIPELINE_COMPONENTS,
     PARAMS_PROVIDERS,
 )
-from qaoa_training_pipeline.pipeline_component import PipelineComponent
-from qaoa_training_pipeline.params_provider import ParamsProvider
-from qaoa_training_pipeline.training.param_result import ParamResult
+from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
+from qaoa_training_pipeline.framework.params_provider import ParamsProvider
+from qaoa_training_pipeline.framework.param_result import ParamResult
 
 
 class Pipeline:

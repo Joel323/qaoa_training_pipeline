@@ -40,19 +40,19 @@ class RecursiveTransitionStates(PipelineComponent):
         return self._trainer.minimization
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        previous_optimal_point: list[float] | None = None,
+        params0: list[float] | None = None,
         reps: int | None = None,
     ) -> ParamResult:
         """
         Args:
             cost_op: The cost operator of the problem we want to solve.
-            previous_optimal_point: A local minima in beta and gamma from which to start
+            params0: A local minima in beta and gamma from which to start
                 the transition states recursion.
             reps: The number of QAOA layers we want to reach.
             mixer: A quantum circuit representing the mixer of QAOA. This allows us to
@@ -66,11 +66,11 @@ class RecursiveTransitionStates(PipelineComponent):
         Returns:
             A `ParamResult` with optimization results.
         """
-        previous_optimal_point = self._require(previous_optimal_point, "a previous_optimal_point.")
+        params0 = self._require(params0, "a params0.")
         reps = self._require(reps, "reps")
         start = time()
-        current_reps = len(previous_optimal_point) // 2
-        ts_state = previous_optimal_point
+        current_reps = len(params0) // 2
+        ts_state = params0
         self._all_results, energy = dict(), None
 
         if current_reps >= reps:
@@ -80,12 +80,12 @@ class RecursiveTransitionStates(PipelineComponent):
 
         while current_reps < reps:
             ts_trainer = TransitionStatesTrainer(self._trainer)
-            result = ts_trainer.run(
+            result = ts_trainer.provide_params(
                 cost_op,
                 mixer,
                 initial_state,
                 ansatz_circuit,
-                previous_optimal_point=ts_state,
+                params0=ts_state,
             )
             ts_state = result["optimized_params"]
             energy = result["energy"]
@@ -124,7 +124,7 @@ class RecursiveTransitionStates(PipelineComponent):
         for key, val in self.parse_runtime_kwargs(kwargs_str).items():
             if key == "reps":
                 train_kwargs[key] = int(val)
-            elif key == "previous_optimal_point":
+            elif key == "params0":
                 train_kwargs[key] = self.extract_list(val, dtype=float)
             else:
                 raise ValueError("Unknown key in provided train_kwargs.")

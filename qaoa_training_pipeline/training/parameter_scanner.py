@@ -60,7 +60,7 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
                 an instance of `BaseAnglesFunction` but we allow any callable here that maps
                 optimization parameters to QAOA angles.
         """
-        super().__init__(self, qaoa_angles_function=qaoa_angles_function)
+        super().__init__(qaoa_angles_function=qaoa_angles_function)
         HistoryMixin.__init__(self)
 
         # Parameters needed for energy evaluation during optimal search

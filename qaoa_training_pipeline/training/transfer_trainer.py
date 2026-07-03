@@ -130,6 +130,7 @@ class TransferTrainer(ProblemParamsProvider):
 
         result = ParamResult(qaoa_angles, time() - start, self, None)
         result["data_key"] = data_key
+        result["metadata"] = self._data[data_key]["metadata"]
 
         return result
 
@@ -169,6 +170,7 @@ class TransferTrainer(ProblemParamsProvider):
         config["angle_aggregator_init"] = self._angle_aggregator.to_config()
 
         config["evaluator"] = "None"
+        config["reps"] = str(self._qaoa_depth)
 
         return config
 

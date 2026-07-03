@@ -111,11 +111,11 @@ class LoadFromJson(BaseDataLoader):
                 # Transform angles to TransferTrainer format
                 if "beta" in angles_dict and "gamma" in angles_dict:
                     qaoa_angles = angles_dict["beta"] + angles_dict["gamma"]
-                    data[tuple_key] = {"qaoa_angles": np.atleast_2d(qaoa_angles)}
+                    data[tuple_key] = {"qaoa_angles": qaoa_angles}
 
                     # Preserve additional metadata if present
                     if "AR" in angles_dict:
-                        data[tuple_key]["approximation_ratio"] = angles_dict["AR"]
+                        data[tuple_key]["metadata"] = angles_dict["AR"]
                 else:
                     # If not in fixed-angle format, store as-is
                     data[tuple_key] = angles_dict

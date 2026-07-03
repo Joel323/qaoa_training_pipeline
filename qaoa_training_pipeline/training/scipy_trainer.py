@@ -85,7 +85,6 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
         params0: list[float] | None = None,
-        reps: int | None = None,
     ) -> ParamResult:
         r"""Call SciPy's minimize function to do the optimization.
 
@@ -103,14 +102,13 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         params0 = self._require(params0, "params0")
         self.reset_history()
 
-        self.angles_function_kwargs = {"reps": reps} if reps is not None else {}
         start = time()
 
         def _energy(x) -> float:
             """Maximize the energy by minimizing the negative energy."""
             estart = time()
 
-            qaoa_angles = self._qaoa_angles_function(x, **self.angles_function_kwargs)
+            qaoa_angles = self._qaoa_angles_function(x)
 
             if cost_op is None:
                 raise ValueError("cost_op must be set.")
@@ -197,7 +195,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
             qaoa_angles_function=function,
         )
 
-    def parse_train_kwargs(self, args_str: str | None = None) -> dict:
+    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Parse any train arguments from a string.
 
         The only argument that can be contained here is params0. It is the values
@@ -205,7 +203,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         minimize function. We give this as a string in the format `params0:v1/v2/v3/v4...`.
         """
         train_kwargs = dict()
-        for key, val in super().parse_runtime_kwargs(args_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "params0":
                 train_kwargs[key] = self.extract_list(val, dtype=float)
             elif key == "reps":

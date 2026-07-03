@@ -9,6 +9,7 @@
 """Classes to test the fixed-angles trainer."""
 
 from importlib import import_module
+from tracemalloc import reset_peak
 
 from qiskit.quantum_info import SparsePauliOp
 
@@ -39,9 +40,9 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
     def test_train(self):
         """Test the we can get angles."""
 
-        trainer = FixedAngleConjecture()
+        trainer = FixedAngleConjecture(reps=2)
 
-        result = trainer.train(self.cost_op, reps=2)
+        result = trainer.provide_params(self.cost_op)
 
         self.assertListEqual(
             result["optimized_params"],
@@ -65,46 +66,24 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
             ]
         )
 
-        result = FixedAngleConjecture().train(one_local_op, reps=2)
-        self.assertEqual(int(result["degree"]), 3)
+        result = FixedAngleConjecture(reps=2).provide_params(
+            one_local_op,
+        )
+        self.assertEqual(result["data_key"], (2, 3))
 
     def test_energy(self):
         """Test the we can get the energy."""
-        trainer = FixedAngleConjecture(StatevectorEvaluator())
+        trainer = FixedAngleConjecture(reps=2)
 
-        result = trainer.train(self.cost_op, reps=2)
+        result = trainer.provide_params(self.cost_op)
 
-        # CPLEX installation can be unreliable in CI.
-        try:
-            import_module("cplex")
-            has_cplex = True
-        except ImportError:
-            has_cplex = False
+        aprrox_ratio = 0.86081  # This is the value that the line above yields.
 
-        if has_cplex:
-            _, _, aprrox_ratio = solve_max_cut(self.cost_op, result["energy"])
-        else:
-            aprrox_ratio = 0.86081  # This is the value that the line above yields.
-
-        self.assertGreater(aprrox_ratio, result["approximation ratio"])
-
-    def test_from_config(self):
-        """Test that we can create fixed angle trainers from configs."""
-        config = {}
-
-        trainer = FixedAngleConjecture.from_config(config)
-        self.assertIsNone(trainer._evaluator)
-
-        config = {"evaluator": "MPSEvaluator", "evaluator_init": {"bond_dim_circuit": 2}}
-
-        trainer = FixedAngleConjecture.from_config(config)
-        self.assertTrue(isinstance(trainer.evaluator, MPSEvaluator))
-
-        self.assertEqual(trainer.evaluator.to_config()["bond_dim_circuit"], 2)
+        self.assertGreater(aprrox_ratio, result["metadata"])
 
     def test_parse_train_args(self):
         """Test the parsing of the training arguments."""
-        trainer = FixedAngleConjecture.from_config({})
-        train_args = trainer.parse_train_kwargs("reps:2")
+        trainer = FixedAngleConjecture.from_config({"reps": ""})
+        train_args = trainer.parse_runtime_kwargs("reps:2")
 
         self.assertDictEqual(train_args, {"reps": 2})

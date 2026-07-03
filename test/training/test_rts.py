@@ -19,10 +19,15 @@ class TestRecursion(TrainingPipelineTestCase):
         scipy_trainer = ScipyTrainer(MPSEvaluator())
         trainer = RecursiveTransitionStates(scipy_trainer)
 
-        result_pre = scipy_trainer.train(cost_op, params0=[0, 0])
+        result_pre = scipy_trainer.provide_params(cost_op, params0=[0, 0])
 
-        result = trainer.train(
-            cost_op, previous_optimal_point=result_pre["optimized_params"], reps=3
+        result = trainer.provide_params(
+            cost_op,
+            params0=result_pre["optimized_params"],
+            reps=3,
+            mixer=None,
+            initial_state=None,
+            ansatz_circuit=None,
         )
 
         self.assertTrue(result[2]["energy"] < result[3]["energy"])
@@ -51,5 +56,5 @@ class TestRecursion(TrainingPipelineTestCase):
         scipy_trainer = ScipyTrainer(MPSEvaluator())
         trainer = RecursiveTransitionStates(scipy_trainer)
 
-        kwargs = trainer.parse_train_kwargs("reps:8:previous_optimal_point:1/2")
+        kwargs = trainer.parse_runtime_kwargs("reps:8:previous_optimal_point:1/2")
         self.assertDictEqual(kwargs, {"reps": 8, "previous_optimal_point": [1.0, 2.0]})

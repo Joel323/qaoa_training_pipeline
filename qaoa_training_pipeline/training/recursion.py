@@ -63,7 +63,7 @@ class RecursionTrainer(PipelineComponent):
         return self._trainer.minimization
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
@@ -105,7 +105,7 @@ class RecursionTrainer(PipelineComponent):
                     f"does not match the expected depth of {2*current_reps}. "
                 )
 
-            result = self._trainer.run(
+            result = self._trainer.provide_params(
                 cost_op,
                 params0=new_params0,
                 mixer=mixer,

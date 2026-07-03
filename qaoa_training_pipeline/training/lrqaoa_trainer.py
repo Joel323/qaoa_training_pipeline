@@ -13,6 +13,7 @@ from qaoa_training_pipeline.training.functions import TQATrainerFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
+
 class LRQAOATrainer(ScipyTrainer):
     """A trainer that implements the Linear Ramp QAOA (LR-QAOA) protocol.
 
@@ -28,6 +29,7 @@ class LRQAOATrainer(ScipyTrainer):
 
     def __init__(
         self,
+        reps: int,
         evaluator: BaseEvaluator,
         minimize_args: dict[str, object] | None = None,
         energy_minimization: bool = False,
@@ -43,5 +45,8 @@ class LRQAOATrainer(ScipyTrainer):
                 maximize the energy.
         """
         super().__init__(
-            evaluator, minimize_args, energy_minimization, TQATrainerFunction("lr_schedule")
+            evaluator,
+            minimize_args,
+            energy_minimization,
+            TQATrainerFunction(reps=reps, tqa_schedule_method="lr_schedule"),
         )

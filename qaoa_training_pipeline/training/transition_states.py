@@ -65,14 +65,13 @@ class TransitionStatesTrainer(PipelineComponent):
         return self._trainer
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
         params0: list[float] | None = None,
-        previous_optimal_point: list[float] | None = None,
     ) -> ParamResult:
         r"""Train the parameters based on a previous optimal point.
 
@@ -92,13 +91,12 @@ class TransitionStatesTrainer(PipelineComponent):
         Returns:
             A dictionary with optimization results.
         """
-        previous_optimal_point = self._require(previous_optimal_point, "a previous optimal point")
-        self._warn_ignored_inputs(params0=params0)
+        params0 = self._require(params0, "a previous optimal point")
         start = time()
 
         result, self._all_ts = dict(), dict()
 
-        for idx, ts_state in enumerate(self.make_ts(previous_optimal_point)):
+        for idx, ts_state in enumerate(self.make_ts(params0)):
             res = self.trainer.provide_params(
                 cost_op, mixer, initial_state, ansatz_circuit, params0=ts_state
             )

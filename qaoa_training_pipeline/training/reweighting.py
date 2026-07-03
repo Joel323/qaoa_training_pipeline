@@ -30,7 +30,7 @@ class ReweightingTrainer(PipelineComponent):
     def __init__(
         self,
         trainer1: PipelineComponent,
-        trainer2: PipelineComponent | None,
+        trainer2: PipelineComponent | None = None,
         qaoa_angles_function: BaseAnglesFunction = IdentityFunction(),
     ) -> None:
         """Initialize the instance.
@@ -89,7 +89,7 @@ class ReweightingTrainer(PipelineComponent):
         return self._trainer_weighted
 
     # pylint: disable=too-many-positional-arguments
-    def run(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
         mixer: QuantumCircuit | None = None,
@@ -132,7 +132,13 @@ class ReweightingTrainer(PipelineComponent):
         self._warn_ignored_inputs(params0=params0)
         params0 = self.scale_parameters(result1)
 
-        result2 = self._trainer_weighted.provide_params(cost_op, params0=params0)
+        result2 = self._trainer_weighted.provide_params(
+            cost_op,
+            params0=params0,
+            mixer=mixer,
+            initial_state=initial_state,
+            ansatz_circuit=ansatz_circuit,
+        )
 
         # Add to the result the intermediate step ParamResult is not serializable but its dict is.
         result2["unweighted_optimization"] = result1.data

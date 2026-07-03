@@ -55,7 +55,7 @@ class TestPCA(TrainingPipelineTestCase):
 
     def test_simple(self):
         """Test that the workflow runs."""
-        result = self._pca.train(self._cost_op, params0=[0] * self._n_pcs)
+        result = self._pca.provide_params(self._cost_op, params0=[0] * self._n_pcs)
 
         self.assertEqual(len(result["optimized_params"]), self._n_pcs)
         self.assertEqual(len(result["optimized_qaoa_angles"]), 2 * self._qaoa_depth)

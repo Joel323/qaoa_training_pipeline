@@ -42,7 +42,6 @@ class RandomPoint(ParamsProvider):
         reps = self._require(reps, "reps")
         lower_bound = self._require(lower_bound, "lower_bound")
         upper_bound = self._require(upper_bound, "upper_bound")
-        seed = self._require(seed, "seed")
         self._lower_bound = lower_bound
         self._upper_bound = upper_bound
         self._seed = seed

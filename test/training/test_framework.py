@@ -8,6 +8,7 @@
 
 """Tests for the framework."""
 
+from ast import Attribute
 from test import TrainingPipelineTestCase
 
 from qaoa_training_pipeline.evaluation.efficient_depth_one import EfficientDepthOneEvaluator
@@ -31,17 +32,23 @@ class TestTrainingFramework(TrainingPipelineTestCase):
 
         # Tests for trainers where minimization is not defined
         for cls in [RandomPoint, OptimizedParametersLoader]:
-            trainer = cls()
+            if cls.__name__ == "RandomPoint":
+                trainer = cls(reps=1)
+            else:
+                trainer = cls()
 
             # pylint: disable=pointless-statement
-            with self.assertRaises(ValueError):
+            with self.assertRaises(AttributeError):
                 trainer.minimization
 
         for val in [True, False]:
             # Test for direct trainers.
 
             for cls in [DepthOneScanTrainer, ScipyTrainer, TQATrainer]:
-                trainer = cls(MPSEvaluator(), energy_minimization=val)
+                if cls.__name__ == "TQATrainer":
+                    trainer = cls(MPSEvaluator(), energy_minimization=val, reps=1)
+                else:
+                    trainer = cls(MPSEvaluator(), energy_minimization=val)
                 self.assertEqual(trainer.minimization, val)
 
             # Tests for trainers with sub-trainers
