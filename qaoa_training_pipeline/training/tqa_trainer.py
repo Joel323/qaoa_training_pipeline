@@ -12,6 +12,7 @@
 from qaoa_training_pipeline.training.functions import TQATrainerFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
+from qaoa_training_pipeline.evaluation import EVALUATORS
 
 
 class TQATrainer(ScipyTrainer):
@@ -51,4 +52,17 @@ class TQATrainer(ScipyTrainer):
                 reps=reps,
                 tqa_schedule_method="tqa_schedule",
             ),
+        )
+
+    @classmethod
+    def from_config(cls, config: dict) -> "TQATrainer":
+        """Create a scipy trainer based on a config."""
+
+        evaluator_cls = EVALUATORS[config["evaluator"]]
+
+        return cls(
+            evaluator=evaluator_cls.from_config(config["evaluator_init"]),
+            reps=config["reps"],
+            minimize_args=config.get("minimize_args", None),
+            energy_minimization=config.get("energy_minimization", False),
         )
