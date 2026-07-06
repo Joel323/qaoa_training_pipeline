@@ -88,7 +88,8 @@ class RandomPoint(ParamsProvider):
         """Create a random initial point generator from a config."""
         return cls(**config)
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse arguments for the train method from a string.
 
         Args:

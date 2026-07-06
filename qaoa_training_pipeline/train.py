@@ -112,7 +112,7 @@ def get_script_args() -> tuple[argparse.Namespace, list]:
     parser.add_argument(
         "--provider_kwargs",
         required=False,
-        default="",
+        default=None,
         type=str,
         help="Arguments for the initial ParamsProvider.",
     )
