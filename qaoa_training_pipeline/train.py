@@ -128,6 +128,17 @@ def get_script_args() -> tuple[argparse.Namespace, list]:
         )
 
     for idx in range(10):
+        help_str = f"A string specifying the component kwargs of component {idx}. "
+        help_str += "To see how this is used go and check the parse_kwargs method in the component."
+
+        parser.add_argument(
+            f"--component_kwargs{idx}",
+            required=False,
+            type=str,
+            help=help_str,
+        )
+
+    for idx in range(10):
         help_str = f"A string to specify the init kwargs of evaluator in trainer {idx}. To see how"
         help_str += "this is used go and check the parse_init_kwargs method in the evaluators."
 

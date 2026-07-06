@@ -114,26 +114,25 @@ class Pipeline:
         if "params_provider" in config:
             provider_config = config["params_provider"]
             provider_cls = provider_registry[provider_config["provider_name"]]
-            params_provider = provider_cls.from_config(provider_config["provider_init"])
-            if params_provider.requires_cost_op:
-                provider_args["cost_op"] = input_problem
             if hasattr(args, "provider_kwargs"):
                 provider_args_str = getattr(args, "provider_kwargs")
-                cmd_provider_kwargs = params_provider.parse_runtime_kwargs(provider_args_str)
-                provider_args.update(cmd_provider_kwargs)
+                cmd_provider_kwargs = provider_cls.parse_runtime_kwargs(provider_args_str)
+                provider_config["provider_init"].update(cmd_provider_kwargs)
+            params_provider = provider_cls.from_config(provider_config["provider_init"])
         pipeline_components = []
         components_args = defaultdict(dict)
         # Initialize the PipelineComponents objects and their runtime arguments
         if "pipeline_components" in config:
             for component_idx, component_config in enumerate(config["pipeline_components"]):
                 component_cls = component_registry[component_config["component_name"]]
-                component = component_cls.from_config(component_config["component_init"])
-                pipeline_components.append(component)
                 if hasattr(args, f"component_kwargs{component_idx}"):
                     train_args_str = getattr(args, f"component_kwargs{component_idx}")
-                    cmd_train_kwargs = component.parse_runtime_kwargs(train_args_str)
-                    components_args[component_idx].update(cmd_train_kwargs)
-                components_args[component_idx].update({"cost_op": input_problem})
+                    cmd_train_kwargs = component_cls.parse_runtime_kwargs(train_args_str)
+                    component_config["component_init"].update(cmd_train_kwargs)
+                component_config["component_init"].update({"cost_op": input_problem})
+                component = component_cls.from_config(component_config["component_init"])
+                pipeline_components.append(component)
+
         # Return a fully defined Pipeline object with the components and their runtime arguments
         return cls(pipeline_components, params_provider), provider_args, components_args
 
