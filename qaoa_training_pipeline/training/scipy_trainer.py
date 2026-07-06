@@ -37,7 +37,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
 
     def __init__(
         self,
-        evaluator: BaseEvaluator,
+        evaluator: BaseEvaluator | None = None,
         minimize_args: dict[str, object] | None = None,
         energy_minimization: bool = False,
         qaoa_angles_function: BaseAnglesFunction = IdentityFunction(),
@@ -128,14 +128,19 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
 
             return energy
 
-        result = minimize(_energy, np.array(params0), **self._minimize_args)
+        if self._evaluator is None:
+            param_result = ParamResult(list(params0), time() - start, self, None)
+        else:
+            result = minimize(_energy, np.array(params0), **self._minimize_args)
 
-        param_result = ParamResult.from_scipy_result(
-            result, params0, time() - start, self._sign, self
-        )
+            param_result = ParamResult.from_scipy_result(
+                result, params0, time() - start, self._sign, self
+            )
 
-        assert self._evaluator, "_evaluator must be defined before calling train()"
-        param_result.update(self._evaluator.get_results_from_last_iteration())
+            assert self._evaluator, "_evaluator must be defined before calling train()"
+            param_result.update(self._evaluator.get_results_from_last_iteration())
+
+        param_result.add_history(self)
 
         return param_result
 

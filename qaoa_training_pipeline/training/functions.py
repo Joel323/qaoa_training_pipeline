@@ -309,7 +309,7 @@ class TQATrainerFunction(BaseAnglesFunction):
 
     def __init__(
         self,
-        reps: int,
+        reps: int | None = None,
         tqa_schedule_method: str | None = None,
     ) -> None:
         """Create an instance of a TQATrainer QAOA angles function.
@@ -328,6 +328,12 @@ class TQATrainerFunction(BaseAnglesFunction):
             self._tqa_schedule = self.lr_schedule
         else:
             raise ValueError("TQA schedule can only be tqa_schedule or lr_schedule")
+
+        if reps is None:
+            raise ValueError(
+                f"reps must be provided to {self.__class__.__name__}(reps=...) or "
+                + "set with trainer.train(..., reps=...)"
+            )
         self._reps = reps
 
     # pylint: disable=unused-argument
@@ -340,11 +346,6 @@ class TQATrainerFunction(BaseAnglesFunction):
         """
 
         reps = self._reps
-        if reps is None:
-            raise ValueError(
-                f"reps must be provided to {self.__class__.__name__}(reps=...) or "
-                + "set with trainer.train(..., reps=...)"
-            )
         return self._tqa_schedule(reps=int(reps), dt=x)
 
     @staticmethod

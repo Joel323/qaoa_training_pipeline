@@ -9,6 +9,10 @@
 """A class that implements Trotterized Quantum Annealing"""
 
 
+from qiskit.quantum_info import SparsePauliOp
+from qiskit import QuantumCircuit
+
+from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.training.functions import TQATrainerFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
@@ -29,8 +33,8 @@ class TQATrainer(ScipyTrainer):
 
     def __init__(
         self,
-        evaluator: BaseEvaluator,
-        reps: int,
+        reps: int | None = None,
+        evaluator: BaseEvaluator | None = None,
         minimize_args: dict[str, object] | None = None,
         energy_minimization: bool = False,
     ):
@@ -52,6 +56,27 @@ class TQATrainer(ScipyTrainer):
                 reps=reps,
                 tqa_schedule_method="tqa_schedule",
             ),
+        )
+
+    def provide_params(
+        self,
+        cost_op: SparsePauliOp | None = None,
+        mixer: QuantumCircuit | None = None,
+        initial_state: QuantumCircuit | None = None,
+        ansatz_circuit: QuantumCircuit | None = None,
+        params0: list[float] | None = None,
+    ) -> ParamResult:
+        """Adds default params0 value for cases where the user does not input an initial
+        value for the TQA schedule.
+        """
+
+        params0 = params0 or [0.75]
+        return super().provide_params(
+            cost_op=cost_op,
+            mixer=mixer,
+            initial_state=initial_state,
+            ansatz_circuit=ansatz_circuit,
+            params0=params0,
         )
 
     @classmethod
