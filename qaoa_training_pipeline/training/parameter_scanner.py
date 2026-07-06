@@ -220,7 +220,8 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
             qaoa_angles_function=function,
         )
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse the training arguments.
 
         These are given in the form:
