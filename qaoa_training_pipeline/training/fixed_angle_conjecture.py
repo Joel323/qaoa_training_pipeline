@@ -29,6 +29,7 @@ class FixedAngleConjecture(TransferTrainer):
                 extract_avg_edge_weights=False,
                 extract_standard_devs=False,
                 extract_density=False,
+                include_one_local=False,
             ),
             reps=reps,
         )

@@ -70,6 +70,7 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
         extract_avg_edge_weights: bool = True,
         extract_standard_devs: bool = True,
         extract_density: bool = True,
+        include_one_local: bool = True,
         extra_features: Optional[Dict] = None,
     ):
         """Setup the class.
@@ -90,6 +91,7 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
         self.extract_avg_edge_weights = extract_avg_edge_weights
         self.extract_standard_devs = extract_standard_devs
         self.extract_density = extract_density
+        self._include_one_local = include_one_local
         self._extra_feature = extra_features or dict()
 
     def features(self):
@@ -122,7 +124,11 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
 
         return names
 
-    def __call__(self, cost_op: SparsePauliOp, qaoa_depth: int) -> Tuple:
+    def __call__(
+        self,
+        cost_op: SparsePauliOp,
+        qaoa_depth: int,
+    ) -> Tuple:
         """
         Extract features from a graph
 
@@ -133,7 +139,7 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
         Returns:
             A tuple of extracted features.
         """
-        graph = operator_to_graph(cost_op)
+        graph = operator_to_graph(cost_op, include_one_local=self._include_one_local)
 
         features: list[int | float] = [qaoa_depth]
 
