@@ -121,7 +121,7 @@ class RecursiveTransitionStates(PipelineComponent):
     def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
         """Parse a string into the training kwargs."""
         train_kwargs = dict()
-        for key, val in self.parse_runtime_kwargs(kwargs_str).items():
+        for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "reps":
                 train_kwargs[key] = int(val)
             elif key == "params0":
