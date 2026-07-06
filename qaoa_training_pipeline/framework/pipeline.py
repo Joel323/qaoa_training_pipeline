@@ -29,6 +29,7 @@ from qiskit.quantum_info import SparsePauliOp
 from qaoa_training_pipeline.training import (
     PIPELINE_COMPONENTS,
     PARAMS_PROVIDERS,
+    PROBLEM_PARAMS_PROVIDERS,
 )
 from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.framework.params_provider import ParamsProvider
@@ -109,7 +110,7 @@ class Pipeline:
         params_provider = None
         provider_args = {}
         component_registry = component_registry or PIPELINE_COMPONENTS
-        provider_registry = provider_registry or PARAMS_PROVIDERS
+        provider_registry = provider_registry or (PARAMS_PROVIDERS | PROBLEM_PARAMS_PROVIDERS)
         # Initialize the ParamsProvider object and its runtime arguments
         if "params_provider" in config:
             provider_config = config["params_provider"]
@@ -119,6 +120,9 @@ class Pipeline:
                 cmd_provider_kwargs = provider_cls.parse_runtime_kwargs(provider_args_str)
                 provider_config["provider_init"].update(cmd_provider_kwargs)
             params_provider = provider_cls.from_config(provider_config["provider_init"])
+            if provider_config["provider_name"] in PROBLEM_PARAMS_PROVIDERS.keys():
+                provider_args.update({"cost_op": input_problem})
+            print(provider_args)
         pipeline_components = []
         components_args = defaultdict(dict)
         # Initialize the PipelineComponents objects and their runtime arguments
@@ -129,7 +133,7 @@ class Pipeline:
                     train_args_str = getattr(args, f"component_kwargs{component_idx}")
                     cmd_train_kwargs = component_cls.parse_runtime_kwargs(train_args_str)
                     component_config["component_init"].update(cmd_train_kwargs)
-                component_config["component_init"].update({"cost_op": input_problem})
+                components_args[component_idx].update({"cost_op": input_problem})
                 component = component_cls.from_config(component_config["component_init"])
                 pipeline_components.append(component)
 
@@ -149,13 +153,18 @@ class Pipeline:
             The final parameters obtained after executing the pipeline.
         """
         # Get initial angles from the ParamsProvider
-        params = self._params_provider.provide_params(**provider_args)
-        # Update results logging dictionary with initial angles provided by the ParamsProvider
-        results_logger["params_provider"] = params
+        if self._params_provider:
+            params = self._params_provider.provide_params(**provider_args)
+            # Update results logging dictionary with initial angles provided by the ParamsProvider
+            results_logger["params_provider"] = params
+            initial_angles = params["optimized_qaoa_angles"]
+        else:
+            initial_angles = None
         # Execute the pipeline components sequentially
+        components_args[0].update(params0=initial_angles)
         for component_idx, component in enumerate(self._pipeline_components):
-            components_args[component_idx].update(params0=params["optimized_qaoa_angles"])
             params = component.provide_params(**components_args[component_idx])
             # Update results logging dictionary with the output of each component
             results_logger[component_idx] = params
+            components_args[component_idx].update(params0=params["optimized_qaoa_angles"])
         return params
