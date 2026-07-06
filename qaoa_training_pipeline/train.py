@@ -27,6 +27,7 @@ import argparse
 from datetime import datetime
 import os
 import json
+import numpy as np
 
 from qaoa_training_pipeline.utils.data_utils import load_input, input_to_operator
 from qaoa_training_pipeline.pre_processing import PREPROCESSORS
@@ -224,6 +225,15 @@ def train(args: argparse.Namespace) -> dict:
 
     save_file = getattr(args, "save_file", None)
     all_results = {}
+    all_results["args"] = vars(args)
+
+    if pre_processor is not None:
+        all_results["pre_processing"] = pre_processor.to_config()
+    else:
+        all_results["pre_processing"] = None
+
+    # Convert to real for serialization since optimization problems are a diagonal Hc.
+    all_results["cost_operator"] = [(item, np.real(c)) for item, c in input_problem.to_list()]
 
     # Create the pipeline from config and prepare runtime arguments
     pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
