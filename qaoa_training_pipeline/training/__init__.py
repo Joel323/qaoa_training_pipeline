@@ -7,6 +7,8 @@
 # that they have been altered from the originals.
 
 """This module collects all the methods to train the parameters of a QAOA circuit."""
+from qaoa_training_pipeline.training.lrqaoa_trainer import LRQAOATrainer
+from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
 from .models.random_regular_fit import RandomRegularDepthOneFit
 from .optimized_parameter_loader import OptimizedParametersLoader
 from .parameter_scanner import DepthOneScanTrainer, DepthOneGammaScanTrainer
@@ -25,7 +27,6 @@ PARAMS_PROVIDERS = {
     "RandomPoint": RandomPoint,
     "TransferTrainer": TransferTrainer,
     "RandomRegularDepthOneFit": RandomRegularDepthOneFit,
-    "ScipyTrainer": ScipyTrainer,
     "DepthOneGammaScanTrainer": DepthOneGammaScanTrainer,
 }
 
@@ -36,6 +37,8 @@ PIPELINE_COMPONENTS = {
     "ScipyTrainer": ScipyTrainer,
     "TransitionStatesTrainer": TransitionStatesTrainer,
     "QAOAPCA": QAOAPCA,
+    "TQATrainer": TQATrainer,
+    "LRQAOATrainer": LRQAOATrainer,
 }
 
 PROBLEM_PARAMS_PROVIDERS = {
