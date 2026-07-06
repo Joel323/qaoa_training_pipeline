@@ -195,7 +195,8 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
             qaoa_angles_function=function,
         )
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse any train arguments from a string.
 
         The only argument that can be contained here is params0. It is the values
@@ -205,7 +206,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
         train_kwargs = dict()
         for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "params0":
-                train_kwargs[key] = self.extract_list(val, dtype=float)
+                train_kwargs[key] = cls.extract_list(val, dtype=float)
             elif key == "reps":
                 train_kwargs[key] = int(val)
             else:

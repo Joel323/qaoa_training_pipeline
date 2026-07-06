@@ -10,7 +10,7 @@
 """
 This module defines the ParamsProvider abstract base class, which serves as the foundation
 for all QAOA parameter providers in the training pipeline. Parameter providers are responsible
-for supplying QAOA angles that define the QAOA circuit. 
+for supplying QAOA angles that define the QAOA circuit.
 
 The ParamsProvider class defines an interface for performing the following tasks:
     - Providing QAOA angles through provide_params
@@ -182,7 +182,8 @@ class ParamsProvider(ABC):
             raise ValueError(f"{self.__class__.__name__} requires {name} to be defined")
         return arg
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse keyword arguments, usually provided via command-line, from a colon-separated
         string format, "k1:v1:k2:v2:...", and returns the arguments in a dictionary format.
         This enables dynamic parameter passing when running the pipeline from the command line.
