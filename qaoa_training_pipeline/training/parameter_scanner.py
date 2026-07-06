@@ -234,7 +234,7 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
             if key == "num_points":
                 train_kwargs[key] = int(val)
             elif key == "parameter_ranges":
-                val_ = self.extract_list(val, dtype=float)
+                val_ = cls.extract_list(val, dtype=float)
                 train_kwargs[key] = [
                     (float(val_[idx]), float(val_[idx + 1])) for idx in range(0, len(val_), 2)
                 ]
