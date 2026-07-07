@@ -17,14 +17,16 @@ class TestRecursion(TrainingPipelineTestCase):
         cost_op = SparsePauliOp.from_list([("ZIIZ", -1), ("IZIZ", -1), ("IIZZ", -1)])
 
         scipy_trainer = ScipyTrainer(MPSEvaluator())
-        trainer = RecursiveTransitionStates(scipy_trainer)
+        trainer = RecursiveTransitionStates(
+            scipy_trainer,
+            reps=3,
+        )
 
         result_pre = scipy_trainer.provide_params(cost_op, params0=[0, 0])
 
         result = trainer.provide_params(
             cost_op,
             params0=result_pre["optimized_params"],
-            reps=3,
             mixer=None,
             initial_state=None,
             ansatz_circuit=None,
@@ -46,6 +48,7 @@ class TestRecursion(TrainingPipelineTestCase):
                 },
                 "minimize_args": {"options": {"maxiter": 20, "rhobeg": 0.2}},
             },
+            "reps": 3,
         }
 
         trainer = RecursiveTransitionStates.from_config(config)
@@ -56,5 +59,5 @@ class TestRecursion(TrainingPipelineTestCase):
         scipy_trainer = ScipyTrainer(MPSEvaluator())
         trainer = RecursiveTransitionStates(scipy_trainer)
 
-        kwargs = trainer.parse_runtime_kwargs("reps:8:previous_optimal_point:1/2")
-        self.assertDictEqual(kwargs, {"reps": 8, "previous_optimal_point": [1.0, 2.0]})
+        kwargs = trainer.parse_runtime_kwargs("reps:8:params0:1/2")
+        self.assertDictEqual(kwargs, {"reps": 8, "params0": [1.0, 2.0]})
