@@ -19,11 +19,10 @@ class TestOptimizedParameterLoader(TrainingPipelineTestCase):
     def test_train(self):
         """Test that we can load from a file."""
 
-        loader = OptimizedParametersLoader()
-
-        kwargs = loader.parse_runtime_kwargs(
+        kwargs = OptimizedParametersLoader.parse_runtime_kwargs(
             "folder:test/data/:file_pattern:20nodes_random7regular"
         )
+        loader = OptimizedParametersLoader(**kwargs)
 
         result = loader.provide_params()
 
