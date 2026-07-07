@@ -139,7 +139,8 @@ class TransferTrainer(ProblemParamsProvider):
         if not isinstance(self._data, dict):
             raise TypeError(f"{self.__class__.__name__} needs data as a dict.")
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Extract training key word arguments from a string.
 
         The input args are only the number of repetitions. The input should be of the form
