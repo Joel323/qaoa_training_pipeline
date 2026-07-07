@@ -65,7 +65,7 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
 
         # Parameters needed for energy evaluation during optimal search
         self._evaluator = evaluator
-        self._parameter_ranges = parameter_ranges
+        self._parameter_ranges = parameter_ranges or [(0.0, np.pi), (0.0, 2 * np.pi)]
         self._num_points = num_points
 
         # Parameters that will be filled by the scanner.
@@ -80,9 +80,6 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
 
         self._opt_param1 = None
         self._opt_param2 = None
-
-        # Default parameter range over which to scan.
-        self._default_range = [(0.0, np.pi), (0.0, 2 * np.pi)]
 
     @property
     def minimization(self) -> bool:
@@ -117,7 +114,7 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
         self.reset_history()
         start = time()
 
-        parameter_ranges = self._parameter_ranges or self._default_range
+        parameter_ranges = self._parameter_ranges
 
         self._energies = np.zeros((self._num_points, self._num_points), dtype=float)
 

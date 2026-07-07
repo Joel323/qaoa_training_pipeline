@@ -145,7 +145,6 @@ class TestTrain(TrainingPipelineTestCase):
             file_name,
             False,
         ]
-        
 
         with patch.object(sys, "argv", test_args):
             args, _ = get_script_args()
