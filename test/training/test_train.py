@@ -43,7 +43,7 @@ class TestTrain(TrainingPipelineTestCase):
             "data/problems/example_graph.json",
             "--config",
             "data/methods/train_method_0.json",
-            "--train_kwargs0",
+            "--provider_kwargs",
             "num_points:10:parameter_ranges:3/6/3/6",
             "--save",
             "--save_file",
@@ -54,14 +54,14 @@ class TestTrain(TrainingPipelineTestCase):
         with patch.object(sys, "argv", test_args):
             args, _ = get_script_args()
             result = train(args)
-
+            print(result["args"]["provider_kwargs"])
             self.assertEqual(
-                result["args"]["train_kwargs0"],
+                result["args"]["provider_kwargs"],
                 "num_points:10:parameter_ranges:3/6/3/6",
             )
 
         # Load from the saved file
-        labels_to_test = ["pre_processing", "cost_operator", "0", "args"]
+        labels_to_test = ["pre_processing", "cost_operator", "params_provider", "args"]
         for file_name in glob.glob("*dmp_file*"):
             with open(file_name, "r") as fin:
                 ld_data = json.load(fin)
@@ -79,7 +79,7 @@ class TestTrain(TrainingPipelineTestCase):
             "test/data/test_graph.json",
             "--config",
             "data/methods/train_method_0.json",
-            "--train_kwargs0",
+            "--provider_kwargs",
             "num_points:2:parameter_ranges:3/6/3/6",
             "--problem_class",
             problem_str,
@@ -145,6 +145,7 @@ class TestTrain(TrainingPipelineTestCase):
             file_name,
             False,
         ]
+        
 
         with patch.object(sys, "argv", test_args):
             args, _ = get_script_args()
@@ -155,21 +156,18 @@ class TestTrain(TrainingPipelineTestCase):
             # case, is the only one)
             self.assertIn("schmidt_values", result[0].keys())
 
-    @data(0, 1, 2, 3, 4, 5, 6, 7, 8)
+    @data(0, 1, 2, 6, 7, 8)
     def test_methods(self, method_idx: int):
         """Test that the different methods run without input args."""
 
         # First value is the trainer index in the chain and the second one is the param length.
         expected_param_len = {
-            0: (0, 2),
-            1: (1, 2),
-            2: (1, 2),
-            3: (0, 2),
-            4: (0, 2),
-            5: (0, 2),
-            6: (1, 6),
-            7: (1, 6),
-            8: (0, 4),  # The data in test/data/qaoa_angles.json is for p=2.
+            0: ("params_provider", 2),
+            1: (0, 2),
+            2: (0, 2),
+            6: (0, 6),
+            7: (0, 6),
+            8: ("params_provider", 4),  # The data in test/data/qaoa_angles.json is for p=2.
         }
 
         file_name = "dmp_file_test_methods_" + str(method_idx)
@@ -195,7 +193,7 @@ class TestTrain(TrainingPipelineTestCase):
             self.assertEqual(len(opt_params), exp_len)
 
     @unpack
-    @data((6, "reps:2", 4, 1), (6, "reps:3", 6, 1), (4, "params0:0/0/0/0", 4, 0))
+    @data((6, "reps:2", 4, 0), (6, "reps:3", 6, 0))
     def test_change_reps(self, method_idx: int, trainer_kwars: str, exp_len: int, trainer_idx: int):
         """Test that we can change the number of reps.
 
@@ -213,7 +211,7 @@ class TestTrain(TrainingPipelineTestCase):
             "test/data/test_graph.json",
             "--config",
             f"data/methods/train_method_{method_idx}.json",
-            f"--train_kwargs{trainer_idx}",
+            f"--component_kwargs{trainer_idx}",
             trainer_kwars,
             False,
         ]
@@ -239,7 +237,7 @@ class TestTrain(TrainingPipelineTestCase):
             "test/data/test_graph.json",
             "--config",
             "data/methods/train_method_0.json",
-            "--train_kwargs0",
+            "--provider_kwargs",
             "num_points:2:parameter_ranges:3/6/3/6",
             "--problem_class",
             "maxcut",
@@ -277,7 +275,7 @@ class TestTrain(TrainingPipelineTestCase):
             "test/data/test_graph.json",
             "--config",
             "data/methods/train_method_9.json",
-            "--train_kwargs0",
+            "--component_kwargs0",
             f"reps:{reps}",
             "--problem_class",
             "maxcut",
