@@ -23,16 +23,22 @@ class RecursiveTransitionStates(PipelineComponent):
     states at the next depth `p+2`. This process continues until the specified depth is reached.
     """
 
-    def __init__(self, trainer: ScipyTrainer):
+    def __init__(
+        self,
+        trainer: ScipyTrainer,
+        reps: int | None = None,
+    ):
         """Initialize a recursion trainer.
 
         Args:
             trainer: The trainer must be the ScipyTrainer.
+            reps: QAOA depth
         """
         super().__init__(trainer.evaluator)
 
         self._trainer = trainer
         self._all_results = None
+        self._reps = reps
 
     @property
     def minimization(self) -> bool:
@@ -47,7 +53,6 @@ class RecursiveTransitionStates(PipelineComponent):
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
         params0: list[float] | None = None,
-        reps: int | None = None,
     ) -> ParamResult:
         """
         Args:
@@ -67,7 +72,7 @@ class RecursiveTransitionStates(PipelineComponent):
             A `ParamResult` with optimization results.
         """
         params0 = self._require(params0, "a params0.")
-        reps = self._require(reps, "reps")
+        reps = self._require(self._reps, "reps")
         start = time()
         current_reps = len(params0) // 2
         ts_state = params0
@@ -118,14 +123,15 @@ class RecursiveTransitionStates(PipelineComponent):
             "trainer": self._trainer.to_config(),
         }
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse a string into the training kwargs."""
         train_kwargs = dict()
         for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "reps":
                 train_kwargs[key] = int(val)
             elif key == "params0":
-                train_kwargs[key] = self.extract_list(val, dtype=float)
+                train_kwargs[key] = cls.extract_list(val, dtype=float)
             else:
                 raise ValueError("Unknown key in provided train_kwargs.")
 

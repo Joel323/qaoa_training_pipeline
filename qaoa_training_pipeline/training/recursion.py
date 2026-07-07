@@ -149,14 +149,15 @@ class RecursionTrainer(PipelineComponent):
             "parameter_extender": self._parameter_extender.__name__,
         }
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse a string into the training kwargs."""
         train_kwargs = dict()
         for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "reps":
                 train_kwargs[key] = int(val)
             elif key == "params0":
-                train_kwargs[key] = self.extract_list(val, dtype=float)
+                train_kwargs[key] = cls.extract_list(val, dtype=float)
             else:
                 raise ValueError("Unknown key in provided train_kwargs.")
 
