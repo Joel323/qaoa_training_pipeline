@@ -134,6 +134,7 @@ class Pipeline:
                     cmd_train_kwargs = component_cls.parse_runtime_kwargs(train_args_str)
                     component_config["component_init"].update(cmd_train_kwargs)
                 components_args[component_idx].update({"cost_op": input_problem})
+                components_args[component_idx].update(component_config.get("component_kwargs", {}))
                 component = component_cls.from_config(component_config["component_init"])
                 pipeline_components.append(component)
 
@@ -160,6 +161,8 @@ class Pipeline:
             initial_angles = params["optimized_qaoa_angles"]
         else:
             initial_angles = None
+            if "params0" in components_args[0]:
+                initial_angles = components_args[0]["params0"]
         # Execute the pipeline components sequentially
         components_args[0].update(params0=initial_angles)
         for component_idx, component in enumerate(self._pipeline_components):
