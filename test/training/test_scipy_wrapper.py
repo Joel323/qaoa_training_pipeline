@@ -158,6 +158,6 @@ class TestSciPyTrainer(TrainingPipelineTestCase):
     def test_parse_train_kwargs(self):
         """Test parsing of training args."""
         kwargs_str = "params0:1.2/3.4"
-        kwargs = ScipyTrainer(EfficientDepthOneEvaluator()).parse_train_kwargs(kwargs_str)
+        kwargs = ScipyTrainer(EfficientDepthOneEvaluator()).parse_runtime_kwargs(kwargs_str)
 
         self.assertDictEqual(kwargs, {"params0": [1.2, 3.4]})
