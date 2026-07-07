@@ -1,14 +1,12 @@
 {
-    "trainer_chain": [
+    "pipeline_components": [
         {
-            "trainer": "TQATrainer",
-            "trainer_init": {
+            "component_name": "LRQAOATrainer",
+            "component_init": {
                 "evaluator": "MPSEvaluator",
                 "evaluator_init": {},
-                "initial_dt":[0.5, 0.5]
-            },
-            
-            "train_kwargs": {}
+                "params0":[0.5, 0.5]
+            }            
         }
     ],
     "description": "optimized TQATrainer with MPSEvaluator"
