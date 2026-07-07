@@ -55,6 +55,7 @@ class LRQAOATrainer(ScipyTrainer):
             TQATrainerFunction(reps=reps, tqa_schedule_method="lr_schedule"),
         )
 
+    # pylint: disable=too-many-positional-arguments
     def provide_params(
         self,
         cost_op: SparsePauliOp | None = None,

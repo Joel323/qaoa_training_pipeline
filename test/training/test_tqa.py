@@ -15,7 +15,6 @@ from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
 from qaoa_training_pipeline.training.lrqaoa_trainer import LRQAOATrainer
 
-from qaoa_training_pipeline.evaluation.statevector_evaluator import StatevectorEvaluator
 
 # Disable import order for this line. Python has a stdlib test module, but this
 # is our own one. Therefore, it is imported with third-party libraries.
@@ -131,6 +130,8 @@ class TestTQA(TrainingPipelineTestCase):
         config = {"evaluator": "StatevectorEvaluator", "evaluator_init": {}, "reps": 1}
 
         trainer = TQATrainer.from_config(config)
+
+        self.assertIsInstance(trainer, TQATrainer)
 
     def test_parse_train_kwargs(self):
         """Test parsing of training args."""

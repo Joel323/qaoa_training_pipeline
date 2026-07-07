@@ -58,6 +58,7 @@ class TQATrainer(ScipyTrainer):
             ),
         )
 
+    # pylint: disable=too-many-positional-arguments
     def provide_params(
         self,
         cost_op: SparsePauliOp | None = None,

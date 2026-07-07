@@ -12,7 +12,7 @@ from test import TrainingPipelineTestCase
 
 import networkx as nx
 
-from qaoa_training_pipeline.evaluation import StatevectorEvaluator
+
 from qaoa_training_pipeline.pre_processing.feature_extraction import GraphFeatureExtractor
 from qaoa_training_pipeline.pre_processing.feature_matching import TrivialFeatureMatcher
 from qaoa_training_pipeline.pre_processing.angle_aggregation import AverageAngleAggregator

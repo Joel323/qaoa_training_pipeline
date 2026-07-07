@@ -40,6 +40,7 @@ class DepthOneScanTrainer(ProblemParamsProvider, HistoryMixin):
 
     requires_cost_op = True
 
+    # pylint: disable=too-many-positional-arguments
     def __init__(
         self,
         evaluator: BaseEvaluator,

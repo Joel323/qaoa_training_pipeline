@@ -8,8 +8,6 @@
 
 """Tests for the framework."""
 
-from ast import Attribute
-from pandas.core.computation.expressions import evaluate
 from test import TrainingPipelineTestCase
 
 from qaoa_training_pipeline.evaluation.efficient_depth_one import EfficientDepthOneEvaluator

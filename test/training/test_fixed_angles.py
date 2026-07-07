@@ -8,15 +8,9 @@
 
 """Classes to test the fixed-angles trainer."""
 
-from importlib import import_module
-from tracemalloc import reset_peak
-
 from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.evaluation.mps_evaluator import MPSEvaluator
-from qaoa_training_pipeline.evaluation.statevector_evaluator import StatevectorEvaluator
 from qaoa_training_pipeline.training.fixed_angle_conjecture import FixedAngleConjecture
-from qaoa_training_pipeline.utils.graph_utils import solve_max_cut
 
 from ..training_pipeline_test_case import TrainingPipelineTestCase
 

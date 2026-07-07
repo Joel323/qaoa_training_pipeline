@@ -10,7 +10,6 @@
 
 from abc import ABC, abstractmethod
 import json
-import numpy as np
 
 
 class BaseDataLoader(ABC):
