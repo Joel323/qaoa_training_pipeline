@@ -44,10 +44,12 @@ class TestDepthOneScanTrainer(TrainingPipelineTestCase):
 
     def test_scan_range(self):
         """Test that when we specify a range the angles stay in that range."""
-        kwargs = self.trainer_low_res.parse_runtime_kwargs(
+        kwargs = DepthOneScanTrainer.parse_runtime_kwargs(
             "num_points:3:parameter_ranges:1.2/2.2/3.3/4.5"
         )
-        result = self.trainer_low_res.provide_params(self.cost_op, **kwargs)
+        trainer_ranges = DepthOneScanTrainer(EfficientDepthOneEvaluator(), **kwargs)
+
+        result = trainer_ranges.provide_params(self.cost_op)
 
         opt_params = result["optimized_params"]
         self.assertTrue(opt_params[0] >= 1.2)
