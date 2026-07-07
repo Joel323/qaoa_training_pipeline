@@ -9,6 +9,7 @@
 """Tests for the framework."""
 
 from ast import Attribute
+from pandas.core.computation.expressions import evaluate
 from test import TrainingPipelineTestCase
 
 from qaoa_training_pipeline.evaluation.efficient_depth_one import EfficientDepthOneEvaluator
@@ -46,7 +47,7 @@ class TestTrainingFramework(TrainingPipelineTestCase):
 
             for cls in [DepthOneScanTrainer, ScipyTrainer, TQATrainer]:
                 if cls.__name__ == "TQATrainer":
-                    trainer = cls(MPSEvaluator(), energy_minimization=val, reps=1)
+                    trainer = cls(evaluator=MPSEvaluator(), energy_minimization=val, reps=1)
                 else:
                     trainer = cls(MPSEvaluator(), energy_minimization=val)
                 self.assertEqual(trainer.minimization, val)
