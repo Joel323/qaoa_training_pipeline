@@ -113,7 +113,7 @@ class RecursiveTransitionStates(PipelineComponent):
 
         trainer = ScipyTrainer.from_config(config["trainer_init"])
 
-        return cls(trainer)
+        return cls(trainer, reps=config["reps"])
 
     def to_config(self) -> dict:
         """Return the configuration of the trainer."""

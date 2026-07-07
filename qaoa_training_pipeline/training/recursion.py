@@ -33,7 +33,12 @@ class RecursionTrainer(PipelineComponent):
     them.
     """
 
-    def __init__(self, trainer: ScipyTrainer, parameter_extender: Callable | None = None):
+    def __init__(
+        self,
+        trainer: ScipyTrainer,
+        parameter_extender: Callable | None = None,
+        reps: int | None = None,
+    ):
         """Initialize a recursion trainer.
 
         Args:
@@ -42,6 +47,7 @@ class RecursionTrainer(PipelineComponent):
                 optimized parameters values at depth `p` and the output are the initial
                 points for the parameter optimization at depth `p+1`.
             trainer: The trainer must be the ScipyTrainer.
+            reps: QAOA circuit depth
         """
         super().__init__(
             trainer.evaluator,
@@ -57,6 +63,9 @@ class RecursionTrainer(PipelineComponent):
         # Store internally all the results that we obtained.
         self._all_results = None
 
+        # Initialize reps
+        self._reps = reps
+
     @property
     def minimization(self) -> bool:
         """Return True if the energy is minimized."""
@@ -70,7 +79,6 @@ class RecursionTrainer(PipelineComponent):
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
         params0: list[float] | None = None,
-        reps: int | None = None,
     ) -> ParamResult:
         """Perform the training.
 
@@ -85,7 +93,7 @@ class RecursionTrainer(PipelineComponent):
         """
 
         params0 = self._require(params0, "params0")
-        reps = self._require(reps, "reps")
+        reps = self._require(self._reps, "reps")
         start = time()
         current_reps = len(params0) // 2
 
@@ -138,7 +146,7 @@ class RecursionTrainer(PipelineComponent):
         trainer = ScipyTrainer.from_config(config["trainer_init"])
         parameter_extender = PARAMETEREXTENDERS[config["parameter_extender"]]
 
-        return cls(trainer, parameter_extender)
+        return cls(trainer, parameter_extender, reps=config["reps"])
 
     def to_config(self) -> dict:
         """Return the configuration of the trainer."""
