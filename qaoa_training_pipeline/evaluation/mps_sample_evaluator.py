@@ -67,7 +67,7 @@ class SampleEvaluator(BaseEvaluator):
 
     def energy(self, sample):
         """Computes the energy for a given sample"""
-        sample = [True if val == "1" else False for val in sample[::-1]]
+        sample = [val == "1" for val in sample[::-1]]
 
         energy = 0
         for aidx, val in enumerate(self._reals):
