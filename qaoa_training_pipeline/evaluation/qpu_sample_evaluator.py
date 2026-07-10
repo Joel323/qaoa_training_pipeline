@@ -1,0 +1,206 @@
+#
+#
+# (C) Copyright IBM 2024.
+#
+# Any modifications or derivative works of this code must retain this
+# copyright notice, and modified files need to carry a notice indicating
+# that they have been altered from the originals.
+
+"""Evaluator that retrieves samples from the quantum hardware"""
+
+import time
+import json
+import numpy as np
+
+from qiskit import transpile
+from qiskit.transpiler import PassManager
+from qiskit.transpiler.passes.routing.commuting_2q_gate_routing import SwapStrategy
+from qiskit.primitives import BackendSamplerV2
+
+from qopt_best_practices.circuit_library import annotated_qaoa_ansatz
+from qopt_best_practices.transpilation.annotated_transpilation_passes import (
+    AnnotatedPrepareCostLayer,
+    AnnotatedCommuting2qGateRouter,
+    SynthesizeAndSimplifyCostLayer,
+    UnrollBoxes,
+)
+from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
+
+
+"""
+TODO Things to add
+- Fractional gates support
+"""
+
+
+class QPUSampleEvaluator(BaseEvaluator):
+    """Backend evaluator."""
+
+    # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
+        self,
+        backend,
+        shots: int = 20000,
+        cvar_alpha: float = 1.00,
+        energy_minimization: bool = False,
+        samples_folder=None,
+        sampler=None,
+    ):
+        """Initialize the class."""
+        super().__init__()
+
+        self._cost_op = None
+        self._counts = []
+
+        self._backend = backend
+        self._backend.options.use_fractional_gates = False
+
+        if sampler is None:
+            self._sampler = BackendSamplerV2(backend=self._backend)
+        else:
+            self._sampler = sampler
+
+        self._shots = shots or 20000
+
+        self._ansatz = None
+        self._depth = None
+        self._cvar_alpha = cvar_alpha
+        self._energy_minimization = energy_minimization
+        self._time_history_qpu = []
+        self._time_history_cpu = []
+        self._samples_folder = samples_folder
+
+    @property
+    def cost_op(self):
+        """Returns the cost operator"""
+        return self._cost_op
+
+    @cost_op.setter
+    def cost_op(self, cost_op):
+        """Sets the cost operator"""
+        self._cost_op = cost_op
+        self._reals = []
+        self._ainds = []
+        start = time.time()
+        for pauli in self._cost_op:
+            indices = tuple([idx for idx, val in enumerate(pauli.paulis[0].z) if val])
+            self._ainds.append(indices)
+            self._reals.append(np.real(pauli.coeffs[0]))
+
+        self._init_time = time.time() - start
+
+    def energy(self, sample):
+        """Compute the energy of a single sample."""
+        sample = [True if val == "1" else False for val in sample[::-1]]
+
+        energy = 0
+        for aidx, val in enumerate(self._reals):
+            if len(self._ainds[aidx]) == 1:
+                if int(sample[self._ainds[aidx][0]]) == 1:
+                    energy -= val
+                else:
+                    energy += val
+
+            if len(self._ainds[aidx]) == 2:
+                if sample[self._ainds[aidx][0]] == sample[self._ainds[aidx][1]]:
+                    energy += val
+                else:
+                    energy -= val
+
+        return energy
+
+    def energies(self, counts: dict):
+        """Make a list of the energies for the counts."""
+        energies = []
+
+        for sample, count in counts.items():
+            energies += [self.energy(sample)] * count
+
+        return energies
+
+    def average_energy(self, counts: dict):
+        """Compute the average energy of the counts."""
+
+        return np.average(self.energies(counts))
+
+    # pylint: disable=too-many-positional-arguments
+    def evaluate(self, cost_op, params, mixer=None, initial_state=None, ansatz_circuit=None):
+        """Evaluate the energy."""
+
+        # Set the cost op. We do not validate that the existing cost op,
+        # if present, is the same as the given cost op.
+        if self._cost_op is None:
+            self.cost_op = cost_op
+
+        # Avoid recreating the circuit all the time.
+        if self._ansatz is None:
+            self.prepare_ansatz(ansatz_circuit, len(params) // 2)
+
+        elif self._depth != len(params) // 2:
+            self.prepare_ansatz(ansatz_circuit, len(params) // 2)
+
+        # Time tracked QPU sample collection
+        start = time.time()
+        pub = (self._ansatz, params, self._shots)
+        result = self._sampler.run([pub]).result()
+        self._time_history_qpu.append(time.time() - start)
+
+        # Time tracked CPU sample aggregation
+        start = time.time()
+        self._counts = result[0].data.meas.get_counts()
+        energy = self.cvar(self.energies(self._counts))
+        self._time_history_cpu.append(time.time() - start)
+
+        if self._samples_folder is not None:
+            iteration = len(self._time_history_qpu)
+
+            with open(self._samples_folder + f"{iteration}.json", "w") as fout:
+                json.dump(self._counts, fout, indent=4)
+
+        return energy
+
+    def prepare_ansatz(self, ansatz_circuit, depth):
+        """Prepare the circuit for hardware execution."""
+        swap_strat = SwapStrategy.from_line(range(ansatz_circuit.num_qubits))
+
+        ansatz = annotated_qaoa_ansatz(ansatz_circuit, reps=depth)
+        ansatz.measure_all()
+        ansatz.measure_all()
+
+        pm1 = PassManager([AnnotatedPrepareCostLayer(), AnnotatedCommuting2qGateRouter(swap_strat)])
+        qc1 = pm1.run(ansatz)
+
+        pm2 = PassManager(
+            [
+                SynthesizeAndSimplifyCostLayer(basis_gates=["x", "cz", "sx", "rz", "id", "cx"]),
+                UnrollBoxes(),
+            ]
+        )
+        qc2 = pm2.run(qc1)
+
+        self._ansatz = transpile(qc2, self._backend, optimization_level=2)
+        self._depth = depth
+
+    def get_results_from_last_iteration(self):
+        """Return the results from the last iteration."""
+        return {"counts": self._counts}
+
+    def to_config(self):
+        config = super().to_config()
+        config["backend"] = self._backend.name
+        config["cvar_alpha"] = self._cvar_alpha
+        config["energy_minimization"] = self._energy_minimization
+
+        return config
+
+    def cvar(self, energies):
+        """Compute the CVAR energy."""
+
+        if self._energy_minimization:
+            sorted_energies = sorted(energies, key=lambda x: -x)
+        else:
+            sorted_energies = sorted(energies)
+
+        end_idx = max(int(self._cvar_alpha * len(energies)), 1)
+
+        return float(np.sum(sorted_energies[0:end_idx]) / end_idx)
