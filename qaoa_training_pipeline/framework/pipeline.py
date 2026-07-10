@@ -123,7 +123,6 @@ class Pipeline:
             params_provider = provider_cls.from_config(provider_config["provider_init"])
             if provider_config["provider_name"] in PROBLEM_PARAMS_PROVIDERS.keys():
                 provider_args.update({"cost_op": input_problem})
-            print(provider_args)
         pipeline_components = []
         components_args = defaultdict(dict)
         # Initialize the PipelineComponents objects and their runtime arguments
@@ -145,9 +144,10 @@ class Pipeline:
     def execute(
         self, provider_args: dict, components_args: dict, results_logger: dict
     ) -> ParamResult:
-        """Executes the pipeline sequentially: first the ParamsProvider is used to
-        provide initial angles, then the pipeline components are executed sequentially,
-        each one providing the input for the next one.
+        """Executes the pipeline sequentially. 
+        
+        First the ParamsProvider is used to provide initial angles, then the pipeline 
+        components are executed sequentially, each one providing the input for the next one.
         Args:
             provider_args: Dictionary of arguments to be passed to the ParamsProvider.
             components_args: Dictionary of arguments to be passed to each component.
