@@ -59,7 +59,7 @@ class SampleEvaluator(BaseEvaluator):
         self._ainds = []
         start = time.time()
         for pauli in self._cost_op:
-            indices = tuple([idx for idx, val in enumerate(pauli.paulis[0].z) if val])
+            indices = tuple(idx for idx, val in enumerate(pauli.paulis[0].z) if val)
             self._ainds.append(indices)
             self._reals.append(np.real(pauli.coeffs[0]))
 
