@@ -144,9 +144,9 @@ class Pipeline:
     def execute(
         self, provider_args: dict, components_args: dict, results_logger: dict
     ) -> ParamResult:
-        """Executes the pipeline sequentially. 
-        
-        First the ParamsProvider is used to provide initial angles, then the pipeline 
+        """Executes the pipeline sequentially.
+
+        First the ParamsProvider is used to provide initial angles, then the pipeline
         components are executed sequentially, each one providing the input for the next one.
         Args:
             provider_args: Dictionary of arguments to be passed to the ParamsProvider.

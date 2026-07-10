@@ -108,7 +108,7 @@ class ScipyTrainer(PipelineComponent, HistoryMixin):
             """Maximize the energy by minimizing the negative energy."""
             estart = time()
 
-            qaoa_angles = self._qaoa_angles_function(x)
+            qaoa_angles = self._qaoa_angles_function(list(x))
 
             if cost_op is None:
                 raise ValueError("cost_op must be set.")
