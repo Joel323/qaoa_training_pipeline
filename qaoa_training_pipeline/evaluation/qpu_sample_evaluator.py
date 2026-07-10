@@ -83,7 +83,7 @@ class QPUSampleEvaluator(BaseEvaluator):
         self._ainds = []
         start = time.time()
         for pauli in self._cost_op:
-            indices = tuple([idx for idx, val in enumerate(pauli.paulis[0].z) if val])
+            indices = tuple(idx for idx, val in enumerate(pauli.paulis[0].z) if val)
             self._ainds.append(indices)
             self._reals.append(np.real(pauli.coeffs[0]))
 
@@ -91,7 +91,7 @@ class QPUSampleEvaluator(BaseEvaluator):
 
     def energy(self, sample):
         """Compute the energy of a single sample."""
-        sample = [True if val == "1" else False for val in sample[::-1]]
+        sample = [val == "1" for val in sample[::-1]]
 
         energy = 0
         for aidx, val in enumerate(self._reals):
