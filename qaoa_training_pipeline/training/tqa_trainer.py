@@ -13,7 +13,7 @@ from qiskit.quantum_info import SparsePauliOp
 from qiskit import QuantumCircuit
 
 from qaoa_training_pipeline.framework.param_result import ParamResult
-from qaoa_training_pipeline.training.functions import TQATrainerFunction
+from qaoa_training_pipeline.training.functions import TQAFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.evaluation import EVALUATORS
@@ -27,7 +27,7 @@ class TQATrainer(ScipyTrainer):
 
     Because the angles are fully determined by ``dt``, the optimization happens over a
     one-dimensional space, which is performed via a ScipyTrainer with an underlying angle mapping
-    provided by TQATrainerFunction.
+    provided by TQAFunction.
 
     """
 
@@ -52,9 +52,8 @@ class TQATrainer(ScipyTrainer):
             evaluator,
             minimize_args,
             energy_minimization,
-            TQATrainerFunction(
+            TQAFunction(
                 reps=reps,
-                tqa_schedule_method="tqa_schedule",
             ),
         )
 

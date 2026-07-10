@@ -12,7 +12,7 @@ from qiskit.quantum_info import SparsePauliOp
 from qiskit import QuantumCircuit
 
 from qaoa_training_pipeline.framework.param_result import ParamResult
-from qaoa_training_pipeline.training.functions import TQATrainerFunction
+from qaoa_training_pipeline.training.functions import LRFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.evaluation import EVALUATORS
@@ -27,7 +27,7 @@ class LRQAOATrainer(ScipyTrainer):
 
     Because the angles are fully determined by the two linear ramps, the optimization happens over a
     two-dimensional space, which is performed via a ScipyTrainer with an underlying angle mapping
-    provided by TQATrainerFunction.
+    provided by LRFunction.
 
     """
 
@@ -52,7 +52,7 @@ class LRQAOATrainer(ScipyTrainer):
             evaluator,
             minimize_args,
             energy_minimization,
-            TQATrainerFunction(reps=reps, tqa_schedule_method="lr_schedule"),
+            LRFunction(reps=reps),
         )
 
     # pylint: disable=too-many-positional-arguments
