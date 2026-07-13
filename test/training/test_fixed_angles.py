@@ -7,11 +7,12 @@
 # that they have been altered from the originals.
 
 """Classes to test the fixed-angles trainer."""
-
+from importlib import import_module
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.training.fixed_angle_conjecture import FixedAngleConjecture
-
+from qaoa_training_pipeline.evaluation.statevector_evaluator import StatevectorEvaluator
+from qaoa_training_pipeline.utils.graph_utils import solve_max_cut
 from ..training_pipeline_test_case import TrainingPipelineTestCase
 
 
@@ -68,10 +69,22 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
     def test_energy(self):
         """Test the we can get the energy."""
         trainer = FixedAngleConjecture(reps=2)
+        evaluator = StatevectorEvaluator()
 
         result = trainer.provide_params(self.cost_op)
+        energy = evaluator.evaluate(cost_op=self.cost_op, params=result["optimized_qaoa_angles"])
 
-        aprrox_ratio = 0.86081  # This is the value that the line above yields.
+        # CPLEX installation can be unreliable in CI.
+        try:
+            import_module("cplex")
+            has_cplex = True
+        except ImportError:
+            has_cplex = False
+
+        if has_cplex:
+            _, _, aprrox_ratio = solve_max_cut(self.cost_op, energy)
+        else:
+            aprrox_ratio = 0.86081  # This is the value that the line above yields.
 
         self.assertGreater(aprrox_ratio, result["metadata"])
 
