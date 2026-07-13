@@ -8,6 +8,7 @@
 
 """Functions for angle trainers."""
 
+from __future__ import annotations
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import numpy as np
@@ -29,7 +30,7 @@ class BaseAnglesFunction(ABC):
 
     @classmethod
     @abstractmethod
-    def from_config(cls, config: dict) -> "BaseAnglesFunction":
+    def from_config(cls, config: dict) -> BaseAnglesFunction:
         """Initialize the function from a config."""
 
 
@@ -106,7 +107,7 @@ class FourierFunction(BaseAnglesFunction):
         return config
 
     @classmethod
-    def from_config(cls, config: dict) -> "FourierFunction":
+    def from_config(cls, config: dict) -> FourierFunction:
         """Initialize the Fourier function."""
         return cls(config.get("depth", None))
 
@@ -272,7 +273,7 @@ class PCAFunction(BaseAnglesFunction):
         return config
 
     @classmethod
-    def from_config(cls, config: dict) -> "PCAFunction":
+    def from_config(cls, config: dict) -> PCAFunction:
         """Initialize the Fourier function."""
 
         pca_func = cls(config["num_components"])
@@ -350,7 +351,7 @@ class TQAFunction(BaseAnglesFunction):
 
     # pylint: disable=unused-argument
     @classmethod
-    def from_config(cls, config: dict) -> "TQAFunction":
+    def from_config(cls, config: dict) -> TQAFunction:
         """Create a TQATrainer from a config dictionary."""
         return cls(reps=config["reps"])
 
@@ -402,7 +403,7 @@ class LRFunction(BaseAnglesFunction):
 
     # pylint: disable=unused-argument
     @classmethod
-    def from_config(cls, config: dict) -> "LRFunction":
+    def from_config(cls, config: dict) -> LRFunction:
         """Create a TQATrainer from a config dictionary."""
         return cls(reps=config["reps"])
 
