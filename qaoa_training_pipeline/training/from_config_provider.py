@@ -13,9 +13,9 @@ from qaoa_training_pipeline.framework.param_result import ParamResult
 
 
 class FromConfigParamsProvider(ParamsProvider):
-    """Class for providing initial QAOA angles or paramters from a configuration file"""
+    """Class for providing initial QAOA angles or parameters from a configuration file"""
 
-    def __init__(self, params0):
+    def __init__(self, params0: list):
         """Initialize the parameter provider.
 
         Args:
