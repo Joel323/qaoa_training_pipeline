@@ -11,6 +11,7 @@
 import time
 import numpy as np
 
+from qiskit.quantum_info import SparsePauliOp
 from qiskit.circuit.library import qaoa_ansatz
 from qiskit.primitives import BackendSamplerV2
 from qiskit_aer import AerSimulator
@@ -72,7 +73,7 @@ class SampleEvaluator(BaseEvaluator):
         energy = 0
         for aidx, val in enumerate(self._reals):
             if len(self._ainds[aidx]) == 1:
-                if int(sample[self._ainds[aidx][0]]) == 1:
+                if sample[self._ainds[aidx][0]]:
                     energy -= val
                 else:
                     energy += val
@@ -82,6 +83,8 @@ class SampleEvaluator(BaseEvaluator):
                     energy += val
                 else:
                     energy -= val
+            if len(self._ainds[aidx]) == 0:
+                energy += 1
 
         return energy
 
@@ -100,12 +103,25 @@ class SampleEvaluator(BaseEvaluator):
     def evaluate(self, cost_op, params, mixer=None, initial_state=None, ansatz_circuit=None):
         """Evaluate the energy."""
 
+        if isinstance(ansatz_circuit, SparsePauliOp):
+            ansatz_op = ansatz_circuit
+        elif ansatz_circuit is None:
+            ansatz_op = cost_op
+        else:
+            raise NotImplementedError(
+                "Custom ansatz circuits in format"
+                f"{ansatz_circuit.__class__.__name__} are not yet supported."
+            )
         # Set the cost op. We do not validate that the existing cost op,
         # if present, is the same as the given cost op.
         if self._cost_op is None:
-            self.cost_op = cost_op
+            self.cost_op = ansatz_op
 
-        ansatz = qaoa_ansatz(ansatz_circuit, reps=len(params) // 2).decompose()
+        ansatz = qaoa_ansatz(
+            cost_operator=ansatz_op,
+            reps=len(params) // 2,
+        ).decompose()
+
         ansatz.count_ops()
         ansatz.measure_all()
 
