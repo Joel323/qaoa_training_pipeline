@@ -90,7 +90,13 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
 
     def test_parse_train_args(self):
         """Test the parsing of the training arguments."""
-        trainer = FixedAngleConjecture.from_config({"reps": ""})
-        train_args = trainer.parse_runtime_kwargs("reps:2")
+        train_args = FixedAngleConjecture.parse_runtime_kwargs("reps:2")
 
         self.assertDictEqual(train_args, {"reps": 2})
+
+    def test_from_config(self):
+        """Test that we can create fixed angle trainers from configs."""
+        config = {"reps": 2}
+
+        trainer = FixedAngleConjecture.from_config(config)
+        self.assertIsInstance(trainer, FixedAngleConjecture)
