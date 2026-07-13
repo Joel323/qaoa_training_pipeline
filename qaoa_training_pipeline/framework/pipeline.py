@@ -139,7 +139,7 @@ class Pipeline:
                 pipeline_components.append(component)
 
         # Return a fully defined Pipeline object with the components and their runtime arguments
-        return cls(pipeline_components, params_provider), provider_args, components_args
+        return cls(params_provider, pipeline_components), provider_args, components_args
 
     def execute(
         self, provider_args: dict, components_args: dict, results_logger: dict
