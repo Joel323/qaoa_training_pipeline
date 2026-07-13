@@ -38,7 +38,9 @@ class FixedAngleConjecture(TransferTrainer):
         """Setup the class and load the parameters."""
         project_root = Path(__file__).resolve().parent
         super().__init__(
-            LoadFromJson(project_root / "data" / "fixed_angle_conjecture.json", nested=True),
+            LoadFromJson(
+                project_root / "data" / "fixed_angle_conjecture_parameter_transfer.json",
+            ),
             GraphFeatureExtractor(
                 extract_num_nodes=False,
                 extract_num_edges=False,
