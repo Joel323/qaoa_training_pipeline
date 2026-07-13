@@ -100,3 +100,4 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
 
         trainer = FixedAngleConjecture.from_config(config)
         self.assertIsInstance(trainer, FixedAngleConjecture)
+        self.assertEqual(trainer._qaoa_depth, 2)
