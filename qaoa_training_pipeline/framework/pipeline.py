@@ -58,27 +58,27 @@ class Pipeline:
 
     def __init__(
         self,
-        pipeline_components: list[PipelineComponent] | None = None,
         params_provider: ParamsProvider | None = None,
+        pipeline_components: list[PipelineComponent] | None = None,
     ):
         """Initialize the QAOA training pipeline.
 
         Args:
+            params_provider: ParamsProvider for generating initial parameters.
+            If None, initial parameters must be provided when executing
+            the pipeline.
             pipeline_components: Optional list of PipelineComponent instances to execute
             sequentially. Each component refines the angles from the previous stage.
             If None, creates an empty list.
 
-            params_provider: Optional ParamsProvider for generating initial parameters.
-            If None, initial parameters must be provided when executing
-            the pipeline.
 
         Note:
             At least one of pipeline_components or params_provider should be provided
             for the pipeline to be useful. An empty pipeline with no components and
             no provider will not perform any operations.
         """
-        self._pipeline_components = pipeline_components or []
         self._params_provider = params_provider
+        self._pipeline_components = pipeline_components or []
 
     @classmethod
     # pylint: disable=too-many-positional-arguments
