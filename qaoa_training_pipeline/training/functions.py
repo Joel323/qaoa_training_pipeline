@@ -407,4 +407,5 @@ FUNCTIONS = {
     "FourierFunction": FourierFunction,
     "PCAFunction": PCAFunction,
     "TQAFunction": TQAFunction,
+    "LRFunction": LRFunction,
 }
