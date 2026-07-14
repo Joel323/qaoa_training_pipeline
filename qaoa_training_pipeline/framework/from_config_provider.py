@@ -8,7 +8,7 @@
 
 """Class inheriting from ParamsProvider used to provide initial QAOA angles via configuration """
 
-from qaoa_training_pipeline.framework import ParamsProvider
+from qaoa_training_pipeline.framework.params_provider import ParamsProvider
 from qaoa_training_pipeline.framework.param_result import ParamResult
 
 
