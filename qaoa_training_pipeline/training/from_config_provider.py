@@ -44,3 +44,9 @@ class FromConfigParamsProvider(ParamsProvider):
 
         """
         return cls(config["params0"])
+
+    def to_config(self) -> dict:
+        return {
+            "provider_name": self.__class__.__name__,
+            "provider_init": {"params0": self._params0},
+        }
