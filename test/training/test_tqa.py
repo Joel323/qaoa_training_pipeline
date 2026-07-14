@@ -96,7 +96,11 @@ class TestTQA(TrainingPipelineTestCase):
 
         result: ParamResult = trainer.train(cost_op, reps=reps)
 
-        self.assertEqual(result["success"], "True")
+        self.assertEqual(
+            result["success"],
+            "True",
+            msg=f"Full optimizer result: {result!r}",
+        )
         self.assertEqual(
             len(result["optimized_params"]),
             1,
