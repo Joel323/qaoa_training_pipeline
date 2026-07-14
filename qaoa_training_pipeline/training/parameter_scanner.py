@@ -266,6 +266,8 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
         self,
         evaluator: BaseEvaluator,
         energy_minimization: bool = False,
+        parameter_ranges: list[tuple[float, float]] | None = None,
+        num_points: int = 15,
     ):
         """Initialize the class instance.
 
@@ -274,53 +276,52 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
             energy_minimization: Allows us to switch between minimizing the energy or maximizing
                 the energy. The default and assumed convention in this repository is to
                 maximize the energy.
+            parameter_ranges:  The parameter range for gamma over which to scan. If
+                this argument is not provided we default to `(0, 2 * np.pi)`.
+            num_points: The number of points in the gamma range to take. This
+                method will thus evaluate the energy `num_points**2` times.
         """
         super().__init__(
-            evaluator=evaluator,
-            energy_minimization=energy_minimization,
+            evaluator=evaluator, energy_minimization=energy_minimization, num_points=num_points
         )
 
         # Override parent initialization since we are only scanning values for gamma and not beta,
         # and put it in a tuple for consistency with parent API
-        self._default_range = [
-            (0.0, 2 * np.pi),
-        ]
+
+        self._parameter_ranges = parameter_ranges or [(0.0, 2 * np.pi)]
 
     # pylint: disable=too-many-positional-arguments
-    def train(
+    def provide_params(
         self,
         cost_op: SparsePauliOp,
+        mixer: QuantumCircuit | None = None,
         initial_state: QuantumCircuit | None = None,
         ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
-        parameter_ranges: list[tuple[float, float]] | None = None,
-        num_points: int = 15,
     ) -> ParamResult:
         r"""Train the parameters by doing a 1D scan and setting beta to the analytical
         optimal solution per gamma.
 
         Args:
             cost_op: The cost operator :math:`H_C` of the problem we want to solve.
+            mixer: A quantum circuit representing the mixer of QAOA. This allows us to
+                accommodate, e.g., warm-start QAOA. If this is None, then we assume the
+                standard QAOA mixer.
             initial_state: A quantum circuit the represents the initial state. If None is
                 given then we default to the equal superposition state |+>.
             ansatz_circuit: The ansatz circuit in case it differs from the standard QAOA
                 circuit given by :math:`\exp(-i\param2 H_C)`.
-            parameter_ranges:  The parameter range for gamma over which to scan. If
-                this argument is not provided we default to `(0, 2 * np.pi)`.
-            num_points: The number of points in the gamma range to take. This
-                method will thus evaluate the energy `num_points**2` times.
+
         """
-        self._warn_ignored_inputs(params0=params0)
         self.reset_history()
         start = time()
 
-        parameter_ranges = parameter_ranges or self._default_range
-
-        self._energies = np.zeros(num_points, dtype=float)
+        self._energies = np.zeros(self._num_points, dtype=float)
 
         # By default params1 keep the value for beta and params2 scans gamma
-        self._params1 = np.zeros(num_points)
-        self._params2 = np.linspace(parameter_ranges[0][0], parameter_ranges[0][1], num_points)
+        self._params1 = np.zeros(self._num_points)
+        self._params2 = np.linspace(
+            self._parameter_ranges[0][0], self._parameter_ranges[0][1], self._num_points
+        )
 
         self._opt_param2, self._opt_param1 = None, None
         graph = operator_to_graph(cost_op)
@@ -359,8 +360,8 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
         self._opt_param1 = opt_param1
 
         opt_result = ParamResult([opt_param1, opt_param2], time() - start, self, opt_energy)
-        opt_result["num_points"] = num_points
-        opt_result["parameter_ranges"] = parameter_ranges
+        opt_result["num_points"] = self._num_points
+        opt_result["parameter_ranges"] = self._parameter_ranges
         opt_result.add_history(self)
 
         return opt_result
@@ -544,4 +545,6 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
         return cls(
             evaluator_cls.from_config(config["evaluator_init"]),
             config.get("energy_minimization", False),
+            config.get("parameter_ranges", None),
+            config.get("num_points", None),
         )

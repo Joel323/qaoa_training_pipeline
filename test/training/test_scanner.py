@@ -79,7 +79,7 @@ class TestDepthOneGammaScanTrainer(TrainingPipelineTestCase):
 
     def setUp(self):
         """Setup variables."""
-        self.trainer = DepthOneGammaScanTrainer(EfficientDepthOneEvaluator())
+        self.trainer = DepthOneGammaScanTrainer(EfficientDepthOneEvaluator(), num_points=3)
         self.cost_op = SparsePauliOp.from_list(
             [("ZIIZ", -1), ("IZIZ", -1), ("IIZZ", -1), ("ZZII", -1)]
         )
@@ -87,13 +87,18 @@ class TestDepthOneGammaScanTrainer(TrainingPipelineTestCase):
 
     def test_simple(self):
         """Basic test of the class DepthOneScanTrainer."""
-        result = self.trainer.train(self.cost_op, num_points=3)
+        result = self.trainer.provide_params(self.cost_op)
         self.assertTrue(len(result["energy_history"]) == 3)
 
     def test_scan_range(self):
         """Test that when we specify a range the angles stay in that range."""
-        kwargs = self.trainer.parse_runtime_kwargs("num_points:3:parameter_ranges:3.3/4.5")
-        result = self.trainer.train(self.cost_op, **kwargs)
+        kwargs = DepthOneGammaScanTrainer.parse_runtime_kwargs(
+            "num_points:3:parameter_ranges:3.3/4.5"
+        )
+        kwargs["evaluator"] = "EfficientDepthOneEvaluator"
+        kwargs["evaluator_init"] = {}
+        trainer_from_parse = DepthOneGammaScanTrainer.from_config(kwargs)
+        result = trainer_from_parse.provide_params(self.cost_op)
 
         opt_params = result["optimized_params"]
         self.assertTrue(opt_params[1] >= 3.3)
@@ -163,7 +168,8 @@ class TestDepthOneGammaScanTrainer(TrainingPipelineTestCase):
         """
         depth_one_trainer = DepthOneScanTrainer(EfficientDepthOneEvaluator(), num_points=100)
         result_depth_one_trainer = depth_one_trainer.provide_params(self.cost_op)
-        result_opt_beta = self.trainer.train(self.cost_op, num_points=100)
+        gamma_trainer = DepthOneGammaScanTrainer(EfficientDepthOneEvaluator(), num_points=100)
+        result_opt_beta = gamma_trainer.provide_params(self.cost_op)
         self.assertAlmostEqual(
             result_opt_beta["energy"], result_depth_one_trainer["energy"], places=3
         )
@@ -171,5 +177,6 @@ class TestDepthOneGammaScanTrainer(TrainingPipelineTestCase):
         depth_one_trainer = DepthOneScanTrainer(EfficientDepthOneEvaluator(), num_points=10)
         # with less points being scanned, the optimal beta trainer should give better result
         result_depth_one_trainer = depth_one_trainer.provide_params(self.cost_op)
-        result_opt_beta = self.trainer.train(self.cost_op, num_points=10)
+        gamma_trainer = DepthOneGammaScanTrainer(EfficientDepthOneEvaluator(), num_points=10)
+        result_opt_beta = gamma_trainer.provide_params(self.cost_op)
         assert result_opt_beta["energy"] >= result_depth_one_trainer["energy"]
