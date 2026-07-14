@@ -24,3 +24,16 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
         """Test that provider can provide params0"""
         params0 = self.params_provider.provide_params()
         self.assertEqual(params0["optimized_params"], [0.5, 0.5])
+
+    def test_from_config(self):
+        """Test that we can build provider from config file"""
+        params_provider = FromConfigParamsProvider.from_config({"params0": [0.5, 0.5]})
+        params0 = params_provider.provide_params()
+        self.assertEqual(params0["optimized_params"], [0.5, 0.5])
+
+    def test_to_config(self):
+        """Test that we can produce a config file from class"""
+        config = self.params_provider.to_config()
+        self.assertIsInstance(config, dict)
+        self.assertEqual(config["provider_name"], "FromConfigParamsProvider")
+        self.assertEqual(config["provider_init"]["params0"], [0.5, 0.5])
