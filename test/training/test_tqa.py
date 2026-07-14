@@ -77,7 +77,7 @@ class TestTQA(TrainingPipelineTestCase):
         evaluator = MPSEvaluator()
 
         reps = 4
-        trainer = TQATrainer(evaluator)
+        trainer = TQATrainer(evaluator, minimize_args={"options": {"maxiter": 50}})
 
         with self.assertRaises(
             ValueError,
