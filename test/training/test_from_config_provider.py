@@ -8,12 +8,14 @@
 
 """Class to test the FromConfigParamsProvider."""
 
-from qaoa_training_pipeline.framework.from_config_provider import FromConfigParamsProvider
+from qaoa_training_pipeline.framework.from_config_provider import (
+    FromConfigParamsProvider,
+)
 
 from ..training_pipeline_test_case import TrainingPipelineTestCase
 
 
-class TestFixedAngleConjecture(TrainingPipelineTestCase):
+class TestFromConfigParamsProvider(TrainingPipelineTestCase):
     """Class to test the FromConfigParamsProvider parameter provider."""
 
     def setUp(self):  # pylint: disable=invalid-name
