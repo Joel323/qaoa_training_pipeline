@@ -8,7 +8,7 @@
 
 """Class to test the FromConfigParamsProvider."""
 
-from qaoa_training_pipeline.training.from_config_provider import FromConfigParamsProvider
+from qaoa_training_pipeline.framework.from_config_provider import FromConfigParamsProvider
 
 from ..training_pipeline_test_case import TrainingPipelineTestCase
 
