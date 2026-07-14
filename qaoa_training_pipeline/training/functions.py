@@ -367,8 +367,7 @@ class LRFunction(BaseAnglesFunction):
         self,
         reps: int | None = None,
     ) -> None:
-        """Create an instance of a LRFunction to apply the lr_schedule to
-        QAOA angles.
+"""Create a LRFunction to apply the lr_schedule to get QAOA angles.
 
         Args:
             reps: QAOA depth to use. If None an error is raised.
