@@ -86,7 +86,7 @@ class TestFixedAngleConjecture(TrainingPipelineTestCase):
         else:
             aprrox_ratio = 0.86081  # This is the value that the line above yields.
 
-        self.assertGreater(aprrox_ratio, result["metadata"])
+        self.assertGreater(aprrox_ratio, result["metadata"]["approximation_ratio"])
 
     def test_parse_train_args(self):
         """Test the parsing of the training arguments."""
