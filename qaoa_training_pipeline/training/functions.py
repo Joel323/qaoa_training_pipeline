@@ -41,7 +41,6 @@ class IdentityFunction(BaseAnglesFunction):
         """Identity function."""
         return x
 
-    # pylint: disable=unused-argument
     @classmethod
     def from_config(cls, config: dict):
         """Initialize the Identity function."""
@@ -325,7 +324,6 @@ class TQAFunction(BaseAnglesFunction):
             )
         self._reps = reps
 
-    # pylint: disable=unused-argument
     def __call__(self, x: list) -> list:
         """Call the TQATrainer QAOA angles function with the corresponding TQA schedule.
 
@@ -349,7 +347,6 @@ class TQAFunction(BaseAnglesFunction):
         grid = np.arange(1, reps + 1) - 0.5
         return np.concatenate((1 - grid * dt / reps, grid * dt / reps)).tolist()
 
-    # pylint: disable=unused-argument
     @classmethod
     def from_config(cls, config: dict) -> TQAFunction:
         """Create a TQATrainer from a config dictionary."""
@@ -367,7 +364,7 @@ class LRFunction(BaseAnglesFunction):
         self,
         reps: int | None = None,
     ) -> None:
-"""Create a LRFunction to apply the lr_schedule to get QAOA angles.
+        """Create a LRFunction to apply the lr_schedule to get QAOA angles.
 
         Args:
             reps: QAOA depth to use. If None an error is raised.
@@ -380,7 +377,6 @@ class LRFunction(BaseAnglesFunction):
             )
         self._reps = reps
 
-    # pylint: disable=unused-argument
     def __call__(self, x: list) -> list:
         """Call the LRFunction QAOA angles function with the corresponding LR schedule.
 
@@ -400,7 +396,6 @@ class LRFunction(BaseAnglesFunction):
         gammas = np.arange(1, reps + 1) * dt[1] / reps
         return np.concatenate((betas, gammas)).tolist()
 
-    # pylint: disable=unused-argument
     @classmethod
     def from_config(cls, config: dict) -> LRFunction:
         """Create a TQATrainer from a config dictionary."""
