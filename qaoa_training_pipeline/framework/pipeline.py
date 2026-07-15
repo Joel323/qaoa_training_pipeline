@@ -25,15 +25,17 @@ Example:
 
 import argparse
 from collections import defaultdict
+
 from qiskit.quantum_info import SparsePauliOp
+
+from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.params_provider import ParamsProvider
+from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training import (
-    PIPELINE_COMPONENTS,
     PARAMS_PROVIDERS,
+    PIPELINE_COMPONENTS,
     PROBLEM_PARAMS_PROVIDERS,
 )
-from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
-from qaoa_training_pipeline.framework.params_provider import ParamsProvider
-from qaoa_training_pipeline.framework.param_result import ParamResult
 
 
 class Pipeline:
@@ -171,5 +173,7 @@ class Pipeline:
             params = component.provide_params(**components_args[component_idx])
             # Update results logging dictionary with the output of each component
             results_logger[component_idx] = params
-            components_args[component_idx].update(params0=params["optimized_qaoa_angles"])
+            next_idx = component_idx + 1
+            if next_idx < len(self._pipeline_components):
+                components_args[next_idx].update(params0=params["optimized_qaoa_angles"])
         return params

@@ -8,19 +8,17 @@
 
 """Tests of the train.py script."""
 
-from test import TrainingPipelineTestCase
-
 import glob
 import json
 import os
 import sys
-
 from unittest.mock import patch
-from ddt import ddt, data, unpack
 
+from ddt import data, ddt, unpack
 from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.train import train, get_script_args
+from qaoa_training_pipeline.train import get_script_args, train
+from test import TrainingPipelineTestCase
 
 
 @ddt
@@ -155,7 +153,7 @@ class TestTrain(TrainingPipelineTestCase):
             # case, is the only one)
             self.assertIn("schmidt_values", result[0].keys())
 
-    @data(0, 1, 2, 6, 7, 8)
+    @data(0, 1, 2, 3, 6, 7, 8)
     def test_methods(self, method_idx: int):
         """Test that the different methods run without input args."""
 
@@ -164,6 +162,7 @@ class TestTrain(TrainingPipelineTestCase):
             0: ("params_provider", 2),
             1: (0, 2),
             2: (0, 2),
+            3: (1, 12),
             6: (0, 6),
             7: (0, 6),
             8: ("params_provider", 4),  # The data in test/data/qaoa_angles.json is for p=2.
