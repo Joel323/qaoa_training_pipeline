@@ -1,11 +1,16 @@
-{
+{   "params_provider": {
+        "provider_name": "FromConfigParamsProvider",
+        "provider_init":{
+            "params0": [0.5, 0.5],
+            "qaoa_angles_function": "IdentityFunction"
+        }
+    },
     "pipeline_components": [
         {
             "component_name": "LRQAOATrainer",
             "component_init": {
                 "evaluator": "MPSEvaluator",
-                "evaluator_init": {},
-                "params0":[0.5, 0.5]
+                "evaluator_init": {}
             }            
         }
     ],

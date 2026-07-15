@@ -29,6 +29,9 @@ import argparse
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from qaoa_training_pipeline.framework.from_config_provider import (
+    FromConfigParamsProvider,
+)
 from qaoa_training_pipeline.training import (
     PARAMS_PROVIDERS,
     PIPELINE_COMPONENTS,
@@ -114,7 +117,11 @@ class Pipeline:
         params_provider = None
         provider_args = {}
         component_registry = component_registry or PIPELINE_COMPONENTS
-        provider_registry = provider_registry or (PARAMS_PROVIDERS | PROBLEM_PARAMS_PROVIDERS)
+        provider_registry = provider_registry or (
+            PARAMS_PROVIDERS
+            | PROBLEM_PARAMS_PROVIDERS
+            | {"FromConfigParamsProvider": FromConfigParamsProvider}
+        )
         # Initialize the ParamsProvider object and its runtime arguments
         if "params_provider" in config:
             provider_config = config["params_provider"]
