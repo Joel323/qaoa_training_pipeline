@@ -10,11 +10,15 @@
 
 # Disable import order for this line. Python has a stdlib test module, but this
 # is our own one. Therefore, it is imported with third-party libraries.
+
 from test import TrainingPipelineTestCase  # pylint: disable=wrong-import-order
 
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.mps_evaluator import MPSEvaluator
+from qaoa_training_pipeline.framework.from_config_provider import (
+    FromConfigParamsProvider,
+)
 from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.training.lrqaoa_trainer import LRQAOATrainer
 from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
@@ -40,7 +44,12 @@ class TestTQA(TrainingPipelineTestCase):
             msg="Calling qaoa_angles_function with reps=... on untrained "
             + "TQATrainer should return list of angles.",
         )
-        result = trainer.provide_params(None)
+
+        params_provider = FromConfigParamsProvider.from_config(
+            {"params0": [0.75], "qaoa_angles_function": "IdentityFunction"}
+        )
+        params = params_provider.provide_params()["optimized_params"]
+        result = trainer.provide_params(None, params0=params)
 
         self.assertListEqual(
             result["optimized_qaoa_angles"],
@@ -65,7 +74,7 @@ class TestTQA(TrainingPipelineTestCase):
             + "on trained TQATrainer should return list of angles.",
         )
         trainer = TQATrainer(evaluator=None, reps=reps + 1)
-        result = trainer.provide_params(None)
+        result = trainer.provide_params(None, params0=params)
         self.assertTrue(
             len(trainer.qaoa_angles_function(result["optimized_params"])) == 2 * (reps + 1),
             msg="Calling qaoa_angles_function without reps=... "

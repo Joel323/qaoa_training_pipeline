@@ -17,10 +17,8 @@ from qaoa_training_pipeline.training.functions import LRFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 
 if TYPE_CHECKING:
-    from qiskit import QuantumCircuit
-    from qiskit.quantum_info import SparsePauliOp
 
-    from qaoa_training_pipeline.framework.param_result import ParamResult
+    pass
 
 
 class LRQAOATrainer(ScipyTrainer):
@@ -58,28 +56,6 @@ class LRQAOATrainer(ScipyTrainer):
             minimize_args,
             energy_minimization,
             LRFunction(reps=reps),
-        )
-
-    # pylint: disable=too-many-positional-arguments
-    def provide_params(
-        self,
-        cost_op: SparsePauliOp | None = None,
-        mixer: QuantumCircuit | None = None,
-        initial_state: QuantumCircuit | None = None,
-        ansatz_circuit: QuantumCircuit | None = None,
-        params0: list[float] | None = None,
-    ) -> ParamResult:
-        """Adds default params0 value for cases where the user does not input an initial
-        value for the TQA schedule.
-        """
-
-        params0 = params0 or [0.5, 0.5]
-        return super().provide_params(
-            cost_op=cost_op,
-            mixer=mixer,
-            initial_state=initial_state,
-            ansatz_circuit=ansatz_circuit,
-            params0=params0,
         )
 
     @classmethod
