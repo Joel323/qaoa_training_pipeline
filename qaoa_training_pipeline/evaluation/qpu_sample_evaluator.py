@@ -1,6 +1,6 @@
 #
 #
-# (C) Copyright IBM 2024.
+# (C) Copyright IBM 2026.
 #
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
@@ -8,24 +8,24 @@
 
 """Evaluator that retrieves samples from the quantum hardware"""
 
-import time
 import json
-import numpy as np
+import time
 
+import numpy as np
 from qiskit import transpile
+from qiskit.primitives import BackendSamplerV2
+from qiskit.quantum_info import SparsePauliOp
 from qiskit.transpiler import PassManager
 from qiskit.transpiler.passes.routing.commuting_2q_gate_routing import SwapStrategy
-from qiskit.primitives import BackendSamplerV2
-
 from qopt_best_practices.circuit_library import annotated_qaoa_ansatz
 from qopt_best_practices.transpilation.annotated_transpilation_passes import (
-    AnnotatedPrepareCostLayer,
     AnnotatedCommuting2qGateRouter,
+    AnnotatedPrepareCostLayer,
     SynthesizeAndSimplifyCostLayer,
     UnrollBoxes,
 )
-from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
+from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
 """
 TODO Things to add
@@ -106,6 +106,8 @@ class QPUSampleEvaluator(BaseEvaluator):
                     energy += val
                 else:
                     energy -= val
+            if len(self._ainds[aidx]) == 0:
+                energy += 1
 
         return energy
 
@@ -127,17 +129,26 @@ class QPUSampleEvaluator(BaseEvaluator):
     def evaluate(self, cost_op, params, mixer=None, initial_state=None, ansatz_circuit=None):
         """Evaluate the energy."""
 
+        if isinstance(ansatz_circuit, SparsePauliOp):
+            ansatz_op = ansatz_circuit
+        elif ansatz_circuit is None:
+            ansatz_op = cost_op
+        else:
+            raise NotImplementedError(
+                "Custom ansatz circuits in format"
+                f"{ansatz_circuit.__class__.__name__} are not yet supported."
+            )
         # Set the cost op. We do not validate that the existing cost op,
         # if present, is the same as the given cost op.
         if self._cost_op is None:
-            self.cost_op = cost_op
+            self.cost_op = ansatz_op
 
         # Avoid recreating the circuit all the time.
         if self._ansatz is None:
-            self.prepare_ansatz(ansatz_circuit, len(params) // 2)
+            self.prepare_ansatz(ansatz_op, len(params) // 2)
 
         elif self._depth != len(params) // 2:
-            self.prepare_ansatz(ansatz_circuit, len(params) // 2)
+            self.prepare_ansatz(ansatz_op, len(params) // 2)
 
         # Time tracked QPU sample collection
         start = time.time()
