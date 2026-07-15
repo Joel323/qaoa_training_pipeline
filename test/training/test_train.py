@@ -12,13 +12,13 @@ import glob
 import json
 import os
 import sys
+from test import TrainingPipelineTestCase
 from unittest.mock import patch
 
 from ddt import data, ddt, unpack
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.train import get_script_args, train
-from test import TrainingPipelineTestCase
 
 
 @ddt

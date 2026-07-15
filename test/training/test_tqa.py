@@ -8,17 +8,16 @@
 
 """Classes to test the TQA trainer."""
 
+# Disable import order for this line. Python has a stdlib test module, but this
+# is our own one. Therefore, it is imported with third-party libraries.
+from test import TrainingPipelineTestCase  # pylint: disable=wrong-import-order
+
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.mps_evaluator import MPSEvaluator
 from qaoa_training_pipeline.framework.param_result import ParamResult
-from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
 from qaoa_training_pipeline.training.lrqaoa_trainer import LRQAOATrainer
-
-
-# Disable import order for this line. Python has a stdlib test module, but this
-# is our own one. Therefore, it is imported with third-party libraries.
-from test import TrainingPipelineTestCase  # pylint: disable=wrong-import-order
+from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
 
 
 class TestTQA(TrainingPipelineTestCase):
@@ -78,6 +77,7 @@ class TestTQA(TrainingPipelineTestCase):
         evaluator = MPSEvaluator()
 
         reps = 4
+        trainer = TQATrainer(evaluator, minimize_args={"options": {"maxiter": 50}})
 
         with self.assertRaises(
             ValueError,
@@ -97,7 +97,11 @@ class TestTQA(TrainingPipelineTestCase):
 
         result: ParamResult = trainer.provide_params(cost_op, params0=[0.2])
 
-        self.assertEqual(result["success"], "True")
+        self.assertEqual(
+            result["success"],
+            "True",
+            msg=f"Full optimizer result: {result!r}",
+        )
         self.assertEqual(
             len(result["optimized_params"]),
             1,
