@@ -152,7 +152,10 @@ def prepare_train_kwargs(config: dict) -> None:
     etc.
     """
     for name in ["mixer", "initial_state", "ansatz_circuit"]:
-        if name in config["train_kwargs"]:
+        if name in config.get("params_provider", {}).get("provider_kwargs", {}) or any(
+            name in component.get("component_kwargs", {})
+            for component in config.get("pipeline_components", [])
+        ):
             raise NotImplementedError(f"Serialization is not yet implemented for {name}.")
 
 
