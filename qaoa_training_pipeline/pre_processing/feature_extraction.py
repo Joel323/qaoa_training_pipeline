@@ -9,7 +9,7 @@
 """Classes to extract features from cost operators."""
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Tuple
+
 import networkx as nx
 import numpy as np
 
@@ -24,7 +24,7 @@ class BaseFeatureExtractor(ABC):
     """A base class that extracts properties from cost operators."""
 
     @abstractmethod
-    def __call__(self, cost_op: SparsePauliOp) -> Tuple:
+    def __call__(self, cost_op: SparsePauliOp) -> tuple:
         """Extract features of the given cost operator."""
 
     def to_config(self) -> dict:
@@ -32,7 +32,7 @@ class BaseFeatureExtractor(ABC):
         return {"feature_extractor_name": self.__class__.__name__}
 
     @abstractmethod
-    def features(self) -> List[str]:
+    def features(self) -> list[str]:
         """Return a list of feature names."""
 
     @classmethod
@@ -71,7 +71,7 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
         extract_standard_devs: bool = True,
         extract_density: bool = True,
         include_one_local: bool = True,
-        extra_features: Optional[Dict] = None,
+        extra_features: dict | None = None,
     ):
         """Setup the class.
 
@@ -128,7 +128,7 @@ class GraphFeatureExtractor(BaseFeatureExtractor):
         self,
         cost_op: SparsePauliOp,
         qaoa_depth: int,
-    ) -> Tuple:
+    ) -> tuple:
         """
         Extract features from a graph
 

@@ -24,16 +24,17 @@ capable of extracting input from a previously obtained training result.
 """
 
 import argparse
-from datetime import datetime
-import os
 import json
+import os
+from datetime import datetime
+
 import numpy as np
 
-from qaoa_training_pipeline.utils.data_utils import load_input, input_to_operator
-from qaoa_training_pipeline.pre_processing import PREPROCESSORS
 from qaoa_training_pipeline.framework.param_result import ParamResult
-from qaoa_training_pipeline.utils.problem_classes import PROBLEM_CLASSES
 from qaoa_training_pipeline.framework.pipeline import Pipeline
+from qaoa_training_pipeline.pre_processing import PREPROCESSORS
+from qaoa_training_pipeline.utils.data_utils import input_to_operator, load_input
+from qaoa_training_pipeline.utils.problem_classes import PROBLEM_CLASSES
 
 
 def get_script_args() -> tuple[argparse.Namespace, list]:
@@ -211,6 +212,8 @@ def train(args: argparse.Namespace) -> dict:
     # Load the pipeline config
     with open(args.config, "r") as fin:
         full_config = json.load(fin)
+
+    prepare_train_kwargs(full_config)
 
     save_file = getattr(args, "save_file", None)
     all_results = {}
