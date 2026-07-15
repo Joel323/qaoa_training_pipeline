@@ -57,7 +57,7 @@ class PipelineComponent(ProblemParamsProvider):
         self,
         evaluator: BaseEvaluator | None = None,
         *,
-        qaoa_angles_function: BaseAnglesFunction | None = None,
+        qaoa_angles_function: BaseAnglesFunction,
     ):
         """Initialize the pipeline component.
 

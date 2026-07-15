@@ -12,6 +12,7 @@ from matplotlib.figure import Figure
 from qaoa_training_pipeline.exceptions import TrainingError
 from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
+from qaoa_training_pipeline.training.functions import IdentityFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.training.transition_states import TransitionStatesTrainer
 
@@ -39,7 +40,7 @@ class RecursiveTransitionStates(PipelineComponent):
             trainer: The trainer must be the ScipyTrainer.
             reps: QAOA depth
         """
-        super().__init__(trainer.evaluator)
+        super().__init__(trainer.evaluator, qaoa_angles_function=IdentityFunction())
 
         self._trainer = trainer
         self._all_results = None
