@@ -72,18 +72,14 @@ class Pipeline:
 
         Args:
             params_provider: ParamsProvider for generating initial parameters.
-            If None, initial parameters must be provided when executing
-            the pipeline.
             pipeline_components: Optional list of PipelineComponent instances to execute
-            sequentially. Each component refines the angles from the previous stage.
-            If None, creates an empty list.
+                sequentially. Each component refines the angles from the previous stage.
+                If None, creates an empty list.
 
-
-        Note:
-            At least one of pipeline_components or params_provider should be provided
-            for the pipeline to be useful. An empty pipeline with no components and
-            no provider will not perform any operations.
         """
+        if params_provider is None:
+            raise ValueError("Pipeline requires at least a params_provider.")
+
         self._params_provider = params_provider
         self._pipeline_components = pipeline_components or []
 
@@ -163,22 +159,13 @@ class Pipeline:
             The final parameters obtained after executing the pipeline.
         """
         # Get initial angles from the ParamsProvider
-        if self._params_provider:
-            params = self._params_provider.provide_params(**provider_args)
-            # Update results logging dictionary with initial angles provided by the ParamsProvider
-            results_logger["params_provider"] = params
-            initial_angles = params["optimized_qaoa_angles"]
-        else:
-            initial_angles = None
-            if "params0" in components_args[0]:
-                initial_angles = components_args[0]["params0"]
+        params = self._params_provider.provide_params(**provider_args)
+        # Update results logging dictionary with initial angles provided by the ParamsProvider
+        results_logger["params_provider"] = params
         # Execute the pipeline components sequentially
-        components_args[0].update(params0=initial_angles)
         for component_idx, component in enumerate(self._pipeline_components):
+            components_args[component_idx].update(params0=params["optimized_qaoa_angles"])
             params = component.provide_params(**components_args[component_idx])
             # Update results logging dictionary with the output of each component
             results_logger[component_idx] = params
-            next_idx = component_idx + 1
-            if next_idx < len(self._pipeline_components):
-                components_args[next_idx].update(params0=params["optimized_qaoa_angles"])
         return params
