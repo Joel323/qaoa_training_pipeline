@@ -23,19 +23,24 @@ Example:
     4. Final optimized angles are returned and the energy is evaluated
 """
 
+from __future__ import annotations
+
 import argparse
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
-from qiskit.quantum_info import SparsePauliOp
-
-from qaoa_training_pipeline.framework.param_result import ParamResult
-from qaoa_training_pipeline.framework.params_provider import ParamsProvider
-from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training import (
     PARAMS_PROVIDERS,
     PIPELINE_COMPONENTS,
     PROBLEM_PARAMS_PROVIDERS,
 )
+
+if TYPE_CHECKING:
+    from qiskit.quantum_info import SparsePauliOp
+
+    from qaoa_training_pipeline.framework.param_result import ParamResult
+    from qaoa_training_pipeline.framework.params_provider import ParamsProvider
+    from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 
 
 class Pipeline:

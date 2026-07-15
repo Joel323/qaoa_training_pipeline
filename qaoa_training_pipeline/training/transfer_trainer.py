@@ -8,11 +8,15 @@
 
 """Base trainer interface for trainers that rely on a data base."""
 
+from __future__ import annotations
+
 from time import time
+from typing import TYPE_CHECKING
 
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
-
+from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.problem_params_provider import (
+    ProblemParamsProvider,
+)
 from qaoa_training_pipeline.pre_processing.angle_aggregation import (
     ANGLE_AGGREGATORS,
     BaseAngleAggregator,
@@ -27,9 +31,12 @@ from qaoa_training_pipeline.pre_processing.feature_matching import (
     BaseFeatureMatcher,
     TrivialFeatureMatcher,
 )
-from qaoa_training_pipeline.framework.problem_params_provider import ProblemParamsProvider
 from qaoa_training_pipeline.training.data_loading import DATA_LOADERS, BaseDataLoader
-from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.training.functions import IdentityFunction
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import SparsePauliOp
 
 
 class TransferTrainer(ProblemParamsProvider):
@@ -68,7 +75,7 @@ class TransferTrainer(ProblemParamsProvider):
             evaluator: An energy evaluator. Note that not all sub-classes may require an
                 energy evaluator.
         """
-        super().__init__()
+        super().__init__(qaoa_angles_function=IdentityFunction())
 
         # The data should be a dictionary in which the keys are features and the
         # values are QAOA angles corresponding to those features. The values are

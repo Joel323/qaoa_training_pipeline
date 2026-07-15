@@ -8,18 +8,20 @@
 
 """This module is an interface to SciPy's minimize function."""
 
+from __future__ import annotations
+
 from time import time
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
 from scipy.optimize import minimize
 
 from qaoa_training_pipeline.evaluation import EVALUATORS
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
+from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training.functions import (
     FUNCTIONS,
@@ -27,7 +29,10 @@ from qaoa_training_pipeline.training.functions import (
     IdentityFunction,
 )
 from qaoa_training_pipeline.training.history_mixin import HistoryMixin
-from qaoa_training_pipeline.framework.param_result import ParamResult
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import SparsePauliOp
 
 
 class ScipyTrainer(PipelineComponent, HistoryMixin):

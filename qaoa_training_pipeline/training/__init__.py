@@ -7,20 +7,19 @@
 # that they have been altered from the originals.
 
 """This module collects all the methods to train the parameters of a QAOA circuit."""
-from qaoa_training_pipeline.training.lrqaoa_trainer import LRQAOATrainer
-from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
+from .lrqaoa_trainer import LRQAOATrainer
 from .models.random_regular_fit import RandomRegularDepthOneFit
 from .optimized_parameter_loader import OptimizedParametersLoader
-from .parameter_scanner import DepthOneScanTrainer, DepthOneGammaScanTrainer
+from .parameter_scanner import DepthOneGammaScanTrainer, DepthOneScanTrainer
 from .qaoa_pca import QAOAPCA
 from .random_point import RandomPoint
 from .recursion import RecursionTrainer
 from .recursive_transition_states import RecursiveTransitionStates
 from .reweighting import ReweightingTrainer
 from .scipy_trainer import ScipyTrainer
+from .tqa_trainer import TQATrainer
 from .transfer_trainer import TransferTrainer
 from .transition_states import TransitionStatesTrainer
-
 
 __all__ = [
     "RandomRegularDepthOneFit",
@@ -34,6 +33,7 @@ __all__ = [
     "ReweightingTrainer",
     "ScipyTrainer",
     "TQATrainer",
+    "LRQAOATrainer",
     "TransferTrainer",
     "TransitionStatesTrainer",
 ]

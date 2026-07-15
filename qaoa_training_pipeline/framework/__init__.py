@@ -15,9 +15,9 @@ from .pipeline_component import PipelineComponent
 from .problem_params_provider import ProblemParamsProvider
 
 __all__ = [
+    "FromConfigParamsProvider",
     "ParamResult",
     "ParamsProvider",
-    "ProblemParamsProvider",
     "PipelineComponent",
-    "FromConfigParamsProvider",
+    "ProblemParamsProvider",
 ]

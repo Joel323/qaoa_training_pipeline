@@ -8,20 +8,25 @@
 
 """Class to recursively train QAOA parameters."""
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from time import time
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.exceptions import TrainingError
-from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training.parameter_extenders import PARAMETEREXTENDERS
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import SparsePauliOp
 
 
 class RecursionTrainer(PipelineComponent):

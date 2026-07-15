@@ -18,8 +18,8 @@ from qaoa_training_pipeline.evaluation import (
     LightConeEvaluator,
     MPSEvaluator,
 )
-from qaoa_training_pipeline.training import ScipyTrainer
 from qaoa_training_pipeline.training.functions import FourierFunction
+from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 
 from ..training_pipeline_test_case import TrainingPipelineTestCase
 

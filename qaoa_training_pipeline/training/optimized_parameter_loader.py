@@ -8,14 +8,17 @@
 
 """This class allows us to load existing optimized parameters."""
 
+from __future__ import annotations
+
 import glob
 import json
 
 import numpy as np
 
 from qaoa_training_pipeline.exceptions import TrainingError
-from qaoa_training_pipeline.framework.params_provider import ParamsProvider
 from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.params_provider import ParamsProvider
+from qaoa_training_pipeline.training.functions import IdentityFunction
 
 
 class OptimizedParametersLoader(ParamsProvider):
@@ -27,7 +30,7 @@ class OptimizedParametersLoader(ParamsProvider):
         file_pattern: str | None = None,
     ):
 
-        super().__init__()
+        super().__init__(qaoa_angles_function=IdentityFunction())
 
         self._folder = folder
         self._file_pattern = file_pattern

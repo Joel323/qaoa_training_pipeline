@@ -9,7 +9,9 @@
 """Functions for angle trainers."""
 
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes

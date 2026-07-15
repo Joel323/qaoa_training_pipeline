@@ -8,19 +8,24 @@
 
 """Transition states trainer."""
 
+from __future__ import annotations
+
 from time import time
+from typing import TYPE_CHECKING
 
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from qiskit import QuantumCircuit
-from qiskit.quantum_info import SparsePauliOp
 
-from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import SparsePauliOp
 
 
 class TransitionStatesTrainer(PipelineComponent):
@@ -254,7 +259,8 @@ class TransitionStatesTrainer(PipelineComponent):
         else:
             raise ValueError(f"Unrecognized trainer {trainer_name}")
 
-    def parse_runtime_kwargs(self, kwargs_str: str | None = None) -> dict:
+    @classmethod
+    def parse_runtime_kwargs(cls, kwargs_str: str | None = None) -> dict:
         """Parse a string into the training kwargs.
 
         The string is of the form `previous_optimal_point:v1/v2/v3/v4...`.
@@ -262,7 +268,7 @@ class TransitionStatesTrainer(PipelineComponent):
         train_kwargs = dict()
         for key, val in super().parse_runtime_kwargs(kwargs_str).items():
             if key == "previous_optimal_point":
-                train_kwargs[key] = self.extract_list(val)
+                train_kwargs[key] = cls.extract_list(val)
             else:
                 raise ValueError("Unknown key in provided train_kwargs.")
 

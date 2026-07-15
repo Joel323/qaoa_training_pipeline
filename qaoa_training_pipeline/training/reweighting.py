@@ -8,20 +8,28 @@
 
 """Trainer for weighted graphs."""
 
+from __future__ import annotations
+
 from time import time
+from typing import TYPE_CHECKING
 
 import numpy as np
 from networkx.classes.reportviews import DegreeView
-from qiskit import QuantumCircuit
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
-from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
-from qaoa_training_pipeline.training.functions import BaseAnglesFunction, IdentityFunction
 from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.pipeline_component import PipelineComponent
+from qaoa_training_pipeline.training.functions import (
+    BaseAnglesFunction,
+    IdentityFunction,
+)
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.training.transition_states import TransitionStatesTrainer
 from qaoa_training_pipeline.utils.graph_utils import operator_to_graph
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
 
 
 class ReweightingTrainer(PipelineComponent):

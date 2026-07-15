@@ -8,12 +8,15 @@
 
 """A class to generate random initial points."""
 
+from __future__ import annotations
+
 from time import time
 
 import numpy as np
 
-from qaoa_training_pipeline.framework.params_provider import ParamsProvider
 from qaoa_training_pipeline.framework.param_result import ParamResult
+from qaoa_training_pipeline.framework.params_provider import ParamsProvider
+from qaoa_training_pipeline.training.functions import IdentityFunction
 
 
 class RandomPoint(ParamsProvider):
@@ -38,7 +41,7 @@ class RandomPoint(ParamsProvider):
                 value defaults to pi.
             seed: Optional argument. If given this sets the seed of the rng generator.
         """
-        super().__init__()
+        super().__init__(qaoa_angles_function=IdentityFunction())
         reps = self._require(reps, "reps")
         lower_bound = self._require(lower_bound, "lower_bound")
         upper_bound = self._require(upper_bound, "upper_bound")

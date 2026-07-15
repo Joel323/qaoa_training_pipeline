@@ -9,14 +9,20 @@
 """A class that implements Trotterized Quantum Annealing"""
 
 
-from qiskit.quantum_info import SparsePauliOp
-from qiskit import QuantumCircuit
+from __future__ import annotations
 
-from qaoa_training_pipeline.framework.param_result import ParamResult
+from typing import TYPE_CHECKING
+
+from qaoa_training_pipeline.evaluation import EVALUATORS
+from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.training.functions import TQAFunction
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
-from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
-from qaoa_training_pipeline.evaluation import EVALUATORS
+
+if TYPE_CHECKING:
+    from qiskit import QuantumCircuit
+    from qiskit.quantum_info import SparsePauliOp
+
+    from qaoa_training_pipeline.framework.param_result import ParamResult
 
 
 class TQATrainer(ScipyTrainer):
