@@ -11,8 +11,8 @@
 from unittest import TestCase
 
 from qiskit.circuit.library import qaoa_ansatz
-from qiskit.quantum_info import SparsePauliOp
 from qiskit.primitives import StatevectorEstimator
+from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.mps_sample_evaluator import SampleEvaluator
 
@@ -23,7 +23,7 @@ class TestSampleEvaluator(TestCase):
     def setUp(self):
         """Setup the variables."""
         self.cost_op = SparsePauliOp.from_list([("II", 1.0), ("IZ", 1.0), ("ZZ", 1.0)])
-        self.evaluator = SampleEvaluator()
+        self.evaluator = SampleEvaluator(shots=10000, chi=32)
 
     def qiskit_circuit_simulation(self, cost_op, params):
         """This is the baseline simulation based on Qiskit."""
