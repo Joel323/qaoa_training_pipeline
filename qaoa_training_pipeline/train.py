@@ -231,9 +231,9 @@ def train(args: argparse.Namespace) -> dict:
     all_results["cost_operator"] = [(item, np.real(c)) for item, c in input_problem.to_list()]
 
     # Create the pipeline from config and prepare runtime arguments
-    pipeline, provider_args, component_args = Pipeline.from_config(full_config, input_problem, args)
+    pipeline, provider_args, component_args = Pipeline.from_config(full_config, args)
     # Execute the pipeline with given argiuments
-    pipeline.execute(provider_args, component_args, all_results)
+    pipeline.execute(input_problem, provider_args, component_args, all_results)
 
     # Save the results if needed
     if args.save:

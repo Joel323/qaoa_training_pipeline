@@ -29,6 +29,8 @@ import argparse
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from qiskit.quantum_info import SparsePauliOp
+
 from qaoa_training_pipeline.framework.from_config_provider import (
     FromConfigParamsProvider,
 )
@@ -39,7 +41,6 @@ from qaoa_training_pipeline.training import (
 )
 
 if TYPE_CHECKING:
-    from qiskit.quantum_info import SparsePauliOp
 
     from qaoa_training_pipeline.framework.param_result import ParamResult
     from qaoa_training_pipeline.framework.params_provider import ParamsProvider
@@ -91,7 +92,6 @@ class Pipeline:
     def from_config(
         cls,
         config: dict,
-        input_problem: SparsePauliOp,
         args: argparse.Namespace,
         component_registry: dict | None = None,
         provider_registry: dict | None = None,
@@ -101,8 +101,6 @@ class Pipeline:
         provided through args.
         Args:
             config: A dictionary containing the whole pipeline configuration.
-            input_problem: The cost operator to be passed to the PipelineComponents and in
-            some cases to the ParamsProvider.
             args: The runtime arguments provided through the command line.
             component_registry: A dictionary containing the available PipelineComponents.
             If None, defaults to PIPELINE_COMPONENTS.
@@ -131,8 +129,6 @@ class Pipeline:
                 cmd_provider_kwargs = provider_cls.parse_runtime_kwargs(provider_args_str)
                 provider_config["provider_init"].update(cmd_provider_kwargs)
             params_provider = provider_cls.from_config(provider_config["provider_init"])
-            if provider_config["provider_name"] in PROBLEM_PARAMS_PROVIDERS.keys():
-                provider_args.update({"cost_op": input_problem})
         pipeline_components = []
         components_args = defaultdict(dict)
         # Initialize the PipelineComponents objects and their runtime arguments
@@ -143,7 +139,6 @@ class Pipeline:
                     train_args_str = getattr(args, f"component_kwargs{component_idx}")
                     cmd_train_kwargs = component_cls.parse_runtime_kwargs(train_args_str)
                     component_config["component_init"].update(cmd_train_kwargs)
-                components_args[component_idx].update({"cost_op": input_problem})
                 components_args[component_idx].update(component_config.get("component_kwargs", {}))
                 component = component_cls.from_config(component_config["component_init"])
                 pipeline_components.append(component)
@@ -152,7 +147,11 @@ class Pipeline:
         return cls(params_provider, pipeline_components), provider_args, components_args
 
     def execute(
-        self, provider_args: dict, components_args: dict, results_logger: dict
+        self,
+        cost_op: SparsePauliOp,
+        provider_args: dict,
+        components_args: dict,
+        results_logger: dict,
     ) -> ParamResult:
         """Executes the pipeline sequentially.
 
@@ -166,13 +165,15 @@ class Pipeline:
             The final parameters obtained after executing the pipeline.
         """
         # Get initial angles from the ParamsProvider
+        if self._params_provider.__class__ in PROBLEM_PARAMS_PROVIDERS.values():
+            provider_args.update({"cost_op": cost_op})
         params = self._params_provider.provide_params(**provider_args)
         # Update results logging dictionary with initial angles provided by the ParamsProvider
         results_logger["params_provider"] = params
         # Execute the pipeline components sequentially
         for component_idx, component in enumerate(self._pipeline_components):
             components_args[component_idx].update(params0=params["optimized_qaoa_angles"])
-            params = component.provide_params(**components_args[component_idx])
+            params = component.provide_params(cost_op=cost_op, **components_args[component_idx])
             # Update results logging dictionary with the output of each component
             results_logger[component_idx] = params
         return params
