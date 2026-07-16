@@ -12,10 +12,12 @@ from .param_result import ParamResult
 from .params_provider import ParamsProvider
 from .problem_params_provider import ProblemParamsProvider
 from .pipeline_component import PipelineComponent
+from .from_config_provider import FromConfigParamsProvider
 
 __all__ = [
     "ParamResult",
     "ParamsProvider",
     "ProblemParamsProvider",
     "PipelineComponent",
+    "FromConfigParamsProvider",
 ]
