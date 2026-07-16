@@ -59,6 +59,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         normalization: str | None = None,
         use_swap_strategy: bool | None = True,
         mode: str | None = "mps",
+        backend: str = "gpu",
     ) -> None:
         """Initialize the evaluator without importing cuQuantum.
 
@@ -83,6 +84,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                 ``device_id`` overrides the same key if both are supplied.
             release_workspace: Whether to release cuTensorNet workspace after the
                 expectation call.
+            backend: desired backend to use. Defaults to GPU
         """
 
         super().__init__()
@@ -145,6 +147,8 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         elif mode == "tn":
             self._config = TNConfig(num_hyper_samples=1)
 
+        self._set_backend(backend=backend)
+
     # pylint: disable=too-many-positional-arguments,arguments-differ
     def evaluate(
         self,
@@ -156,16 +160,8 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
     ) -> float:
         """Evaluate the default QAOA energy for the given diagonal cost operator."""
 
-        # self._validate_qaoa_features(mixer, initial_state, ansatz_circuit)
-
-        # if len(params) % 2 != 0:
-        #     raise KeyError("Number of parameters must be an even integer")
-
         self._terms_from_cost_operator(cost_op, params)
         self._pauli_strings_from_terms(cost_op.num_qubits, self._observable_terms)
-
-        # print(cost_op.num_qubits)
-        # print(len(next(iter(self._pauli_terms.keys()))))
 
         assert len(self._terms) == len(self._observable_terms)
 
@@ -175,7 +171,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
             dtype=self._dtype,
         )
         self._state = state
-        # norm = state.compute_norm()
         self._apply_qaoa_state(self._state, cost_op.num_qubits, self._terms, params)
         expectation = self._state.compute_expectation(self._pauli_terms)
         self.free_state()
@@ -372,21 +367,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             )
             self._observable_terms = terms_observable
 
-    @staticmethod
-    def _validate_qaoa_features(
-        mixer: QuantumCircuit | None,
-        initial_state: QuantumCircuit | None,
-        ansatz_circuit: QuantumCircuit | SparsePauliOp | None,
-    ) -> None:
-        """Reject features outside the first cuQuantum MPS implementation."""
-
-        if mixer is not None:
-            raise NotImplementedError("Custom mixers are not supported; use the default X mixer.")
-        if initial_state is not None:
-            raise NotImplementedError("Custom initial states are not supported.")
-        if ansatz_circuit is not None:
-            raise NotImplementedError("Custom ansatz circuits are not supported.")
-
     def _plus_state(self, n_qubits):
         xp = self._backend()
         dtp = xp.complex64 if self._dtype == "complex64" else xp.complex128
@@ -493,8 +473,15 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                 if abs(coefficient) > 1.0e-15
             }
 
+    def _set_backend(self, backend: str):
+        if backend == "gpu":
+            self._xp = cp
+        else:
+            self._xp = np
+
     def _backend(self):
-        return cp
+        """"""
+        return self._xp
 
     def free_state(self):
         self._state.free()
