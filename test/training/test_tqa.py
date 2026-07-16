@@ -10,13 +10,12 @@
 
 # Disable import order for this line. Python has a stdlib test module, but this
 # is our own one. Therefore, it is imported with third-party libraries.
-from test import TrainingPipelineTestCase  # pylint: disable=wrong-import-order
-
 from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.mps_evaluator import MPSEvaluator
 from qaoa_training_pipeline.framework.param_result import ParamResult
 from qaoa_training_pipeline.training.tqa_trainer import TQATrainer
+from test import TrainingPipelineTestCase  # pylint: disable=wrong-import-order
 
 
 class TestTQA(TrainingPipelineTestCase):
