@@ -6,28 +6,18 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
-"""CUDA-Q MPS benchmark evaluator for MaxCut QAOA.
+"""CUDA-Q MPS evaluator
 
-This module provides an optional NVIDIA CUDA-Q backend for benchmarking QAOA MaxCut
-energy evaluations against the existing CPU evaluators. CUDA-Q is imported lazily
-when the evaluator is instantiated, so importing :mod:`qaoa_training_pipeline`
-does not require CUDA-Q to be installed.
+This module provides an NVIDIA CUDA-Q backend for evaluating QAOA energy on GPU.
+CUDA-Q is imported lazily when the evaluator is instantiated, so importing the
+qaoa_training_pipeline package does not require CUDA-Q to be installed.
 
-The evaluator sets the CUDA-Q target globally to ``tensornet-mps`` in
-:meth:`CudaQMPSBenchmarkEvaluator.setup_target`. CUDA-Q targets are process-wide,
-so benchmark scripts should treat this evaluator as owning the CUDA-Q target for
-the duration of the run.
-
-The energy convention matches the rest of this repository: for graph inputs the
-MaxCut Hamiltonian is ``sum -0.5 * weight * Z_i Z_j`` and the returned value is
-``<H_C>``, not the raw cut value.
 """
 
 import os
 from dataclasses import dataclass
 from numbers import Integral
 from typing import Iterable, List, Sequence
-import time
 
 import networkx as nx
 import numpy as np
@@ -36,7 +26,6 @@ from qiskit.quantum_info import SparsePauliOp
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 from qaoa_training_pipeline.utils.graph_utils import graph_to_operator
-
 
 CUDAQ_MPS_TARGET = "tensornet-mps"
 CUDAQ_MPS_ENV_VARS = {
@@ -114,29 +103,7 @@ def _cudaq_qaoa_kernel(cudaq):
 
 
 class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
-    """Benchmark QAOA MaxCut energies with CUDA-Q's ``tensornet-mps`` target.
-
-    Args:
-        graph: Optional NetworkX graph. When provided, it is converted to the
-            repository MaxCut Hamiltonian convention ``-0.5 * weight * Z_i Z_j``.
-        list_of_edges: Optional edge list. Entries may be ``(u, v)``, ``(u, v, weight)``,
-            or ``((u, v), weight)`` and are converted with the same MaxCut convention.
-        n_qubits: Number of qubits. Required when the graph has isolated highest-index
-            vertices that do not appear in ``list_of_edges``.
-        max_bond_dim: Value for ``CUDAQ_MPS_MAX_BOND``.
-        abs_cutoff: Value for ``CUDAQ_MPS_ABS_CUTOFF``.
-        relative_cutoff: Value for ``CUDAQ_MPS_RELATIVE_CUTOFF``.
-        precision: ``"fp64"`` by default; use ``"fp32"`` to call
-            ``cudaq.set_target("tensornet-mps", option="fp32")``.
-        auto_setup_target: If true, :meth:`evaluate` calls :meth:`setup_target` before
-            observing the energy.
-        require_gpu: If true, fail early when CUDA-Q reports zero available GPUs.
-
-    The evaluator intentionally supports only weighted two-local diagonal ZZ Hamiltonians
-    for this first CUDA-Q MaxCut benchmark backend. Custom mixers, custom initial states,
-    custom ansatz circuits, hyperedges, one-local terms, identity offsets, and non-Z
-    Paulis are rejected.
-    """
+    """Evaluator that computes energies for QAOA with CUDA-Q's ``tensornet-mps`` target."""
 
     # pylint: disable=too-many-positional-arguments
     def __init__(
@@ -150,9 +117,31 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         precision: str = "fp64",
         auto_setup_target: bool = True,
         require_gpu: bool = True,
-        svd_algo: str | None = None
+        svd_algo: str | None = None,
     ) -> None:
-        """Initialize the evaluator without setting the CUDA-Q target."""
+        """Initialize the CUDA-Q evaluator.
+
+            Args:
+                graph: Optional NetworkX graph. When provided, it is converted to the
+                    repository MaxCut Hamiltonian convention ``-0.5 * weight * Z_i Z_j``.
+                list_of_edges: Optional edge list. Entries may be ``(u, v)``, ``(u, v, weight)``,
+                    or ``((u, v), weight)`` and are converted with the same MaxCut convention.
+                n_qubits: Number of qubits. Required when the graph has isolated highest-index
+                    vertices that do not appear in ``list_of_edges``.
+                max_bond_dim: Value for ``CUDAQ_MPS_MAX_BOND``.
+                abs_cutoff: Value for ``CUDAQ_MPS_ABS_CUTOFF``.
+                relative_cutoff: Value for ``CUDAQ_MPS_RELATIVE_CUTOFF``.
+                precision: ``"fp64"`` by default; use ``"fp32"`` to call
+                    ``cudaq.set_target("tensornet-mps", option="fp32")``.
+                auto_setup_target: If true, :meth:`evaluate` calls :meth:`setup_target` before
+                    observing the energy.
+                require_gpu: If true, fail early when CUDA-Q reports zero available GPUs.
+
+        The evaluator intentionally supports only weighted two-local diagonal ZZ Hamiltonians
+        for this first CUDA-Q MaxCut benchmark backend. Custom mixers, custom initial states,
+        custom ansatz circuits, hyperedges, one-local terms, identity offsets, and non-Z
+        Paulis are rejected.
+        """
 
         super().__init__()
         self._cudaq = _require_cudaq()
@@ -175,13 +164,10 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         if svd_algo is not None:
             svd_algo = svd_algo.upper()
             if svd_algo not in {"GESVD", "GESVDJ", "GESVDP", "GESVDR"}:
-                raise ValueError(
-                    "svd_algo must be one of GESVD, GESVDJ, GESVDP, or GESVDR."
-                )
+                raise ValueError("svd_algo must be one of GESVD, GESVDJ, GESVDP, or GESVDR.")
             self._svd_algo = svd_algo
         else:
             self._svd_algo = "GESVD"
-
 
         self._max_bond_dim = max_bond_dim
         self._abs_cutoff = abs_cutoff
@@ -254,11 +240,9 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
             raise KeyError("Number of parameters must be an even integer")
 
         layer_count = len(qaoa_params) // 2
-        
 
         if self._auto_setup_target:
             self.setup_target()
-
 
         if self._hamiltonian is None:
             self._terms = self._terms_from_cost_operator(active_cost_op)
@@ -267,7 +251,9 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
             self._edges_tgt = [term.v for term in self._terms]
             self._edge_coefficients = [term.coefficient for term in self._terms]
         if self._kernel is None:
-            self._kernel = self._make_graph_qaoa_kernel(self._cudaq,active_cost_op.num_qubits,self._terms)
+            self._kernel = self._make_graph_qaoa_kernel(
+                self._cudaq, active_cost_op.num_qubits, self._terms
+            )
 
         result = self._cudaq.observe(
             self._kernel,
@@ -277,27 +263,6 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
         )
         energy = float(np.real(result.expectation()))
         return energy
-
-    def evaluate_betas_gammas(
-        self,
-        betas: Sequence[float],
-        gammas: Sequence[float],
-        cost_op: SparsePauliOp | None = None,
-    ) -> float:
-        """Evaluate with separate beta and gamma vectors."""
-
-        if len(betas) != len(gammas):
-            raise ValueError("betas and gammas must have the same length.")
-
-        if cost_op is None:
-            return self.evaluate(list(betas), list(gammas))
-
-        return self.evaluate(cost_op, list(betas) + list(gammas))
-
-    def get_results_from_last_iteration(self) -> dict:
-        """Return CUDA-Q target and problem metadata from the last evaluation."""
-
-        return self._results_last_iteration
 
     def to_config(self) -> dict:
         """Json serializable config to keep track of how results are generated."""
@@ -564,6 +529,7 @@ class CudaQMPSBenchmarkEvaluator(BaseEvaluator):
                     f"CUDA-Q target '{CUDAQ_MPS_TARGET}' requires an NVIDIA GPU, "
                     "but CUDA-Q reports zero available GPUs."
                 )
+
     @staticmethod
     def _make_graph_qaoa_kernel(
         cudaq,
