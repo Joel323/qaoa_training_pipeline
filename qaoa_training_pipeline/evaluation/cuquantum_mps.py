@@ -177,14 +177,6 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
 
         return expectation
 
-    def _get_cuquantum_classes(self):
-        """Import and cache cuQuantum classes."""
-
-        if self._cuquantum_classes is None:
-            self._cuquantum_classes = _require_cuquantum()
-
-        return self._cuquantum_classes
-
     def _apply_qaoa_state(
         self,
         state,
@@ -211,9 +203,11 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
         # plus_state = self._plus_state(n_qubits)
         # state.set_initial_mps(plus_state)
 
+        # Apply QAOA layers
         rep = 1
         for layer in range(layer_count):
             gamma = params[layer_count + layer]
+            # Apply each of the terms with naive SWAP strategy if there is no SWAP strategy usage
             if not self._use_swap_strategy:
                 for term in terms:
                     if len(term.qubits) == 1:
@@ -250,7 +244,7 @@ class CuQuantumMPSEvaluator(BaseEvaluator):
                             )
 
             else:
-
+                # If we use SWAP strategy, apply the previously computed strategy
                 layer_order = list(range(len(self._swap_strategy) + 1))
                 if rep % 2 == 0:
                     layer_order = layer_order[::-1]
