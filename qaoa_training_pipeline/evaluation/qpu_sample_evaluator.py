@@ -141,7 +141,7 @@ class QPUSampleEvaluator(BaseEvaluator):
         # Set the cost op. We do not validate that the existing cost op,
         # if present, is the same as the given cost op.
         if self._cost_op is None:
-            self.cost_op = ansatz_op
+            self.cost_op = cost_op
 
         # Avoid recreating the circuit all the time.
         if self._ansatz is None:
@@ -172,24 +172,24 @@ class QPUSampleEvaluator(BaseEvaluator):
 
     def prepare_ansatz(self, ansatz_circuit, depth):
         """Prepare the circuit for hardware execution."""
-        swap_strat = SwapStrategy.from_line(range(ansatz_circuit.num_qubits))
-
         ansatz = annotated_qaoa_ansatz(ansatz_circuit, reps=depth)
         ansatz.measure_all()
-        ansatz.measure_all()
 
-        pm1 = PassManager([AnnotatedPrepareCostLayer(), AnnotatedCommuting2qGateRouter(swap_strat)])
-        qc1 = pm1.run(ansatz)
+        has_two_qubit_terms = any(sum(pauli.paulis[0].z) > 1 for pauli in ansatz_circuit)
 
-        pm2 = PassManager(
-            [
-                SynthesizeAndSimplifyCostLayer(basis_gates=["x", "cz", "sx", "rz", "id", "cx"]),
-                UnrollBoxes(),
-            ]
-        )
-        qc2 = pm2.run(qc1)
+        passes = []
+        if has_two_qubit_terms:
+            swap_strat = SwapStrategy.from_line(range(ansatz_circuit.num_qubits))
+            passes += [AnnotatedPrepareCostLayer(), AnnotatedCommuting2qGateRouter(swap_strat)]
+        passes += [
+            SynthesizeAndSimplifyCostLayer(basis_gates=["x", "cz", "sx", "rz", "id", "cx"]),
+            UnrollBoxes(),
+        ]
 
-        self._ansatz = transpile(qc2, self._backend, optimization_level=2)
+        swap_pm = PassManager(passes)
+        qc = swap_pm.run(ansatz)
+
+        self._ansatz = transpile(qc, self._backend, optimization_level=2)
         self._depth = depth
 
     def get_results_from_last_iteration(self):
