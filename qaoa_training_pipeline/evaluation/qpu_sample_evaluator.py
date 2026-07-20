@@ -27,11 +27,6 @@ from qopt_best_practices.transpilation.annotated_transpilation_passes import (
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
-"""
-TODO Things to add
-- Fractional gates support
-"""
-
 
 class QPUSampleEvaluator(BaseEvaluator):
     """Backend evaluator."""

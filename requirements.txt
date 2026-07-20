@@ -12,3 +12,4 @@ qiskit-ibm-runtime
 qiskit-optimization[cplex]
 scikit-learn
 cotengra<=0.8.1
+qopt-best-practices @ git+https://github.com/qiskit-community/qopt-best-practices.git@a861d46e6d77c64b87124a50216995d2d2d6d5fe
