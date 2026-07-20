@@ -53,12 +53,14 @@ class TestQPUSampleEvaluator(TestCase):
         ansatz_op = SparsePauliOp.from_list([("ZI", 1)])
 
         angles = [1.2, 1.3]
-
+        self.evaluator.prepare_ansatz(ansatz_op, len(angles) // 2)
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=ansatz_op)
+        self.evaluator.prepare_ansatz(self.cost_op, len(angles) // 2)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
         self.assertTrue(abs(energy1 - energy2) > 0.1)
 
+        self.evaluator.prepare_ansatz(self.cost_op, len(angles) // 2)
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=self.cost_op)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
