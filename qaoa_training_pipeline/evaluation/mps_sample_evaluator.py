@@ -9,11 +9,12 @@
 """Sample-based MPS evaluator"""
 
 import time
-import numpy as np
 
-from qiskit.quantum_info import SparsePauliOp
+import numpy as np
+from qiskit.circuit import QuantumCircuit
 from qiskit.circuit.library import qaoa_ansatz
 from qiskit.primitives import BackendSamplerV2
+from qiskit.quantum_info import SparsePauliOp
 from qiskit_aer import AerSimulator
 
 from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
@@ -21,14 +22,25 @@ from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
 class SampleEvaluator(BaseEvaluator):
     """Approximate the energy by sampling from a MPS.
-    
+
     This MPS-based energy evaluator does not contract the MPS to compute the value of
     an observable. Instead, we draw samples `x` from the MPS and then evaluate the energy
-    of the observable for each sample. 
+    of the observable for each sample.
     """
 
-    def __init__(self, chi=None, max_parallel_threads=None, shots=None):
-        """Initialize the class."""
+    def __init__(
+        self,
+        chi: int | None = None,
+        max_parallel_threads: int | None = None,
+        shots: int | None = None,
+    ):
+        """Initialize the class.
+
+        Args:
+            chi: bond dimension of the MPS via AerSimulator.
+            max_parallel_threads: maximum CPU cores used by AerSimulator.
+            shots: number of circuit executions.
+        """
         super().__init__()
 
         self._cost_op = None
@@ -55,9 +67,9 @@ class SampleEvaluator(BaseEvaluator):
         return self._cost_op
 
     @cost_op.setter
-    def cost_op(self, cost_op):
+    def cost_op(self, cost_op: SparsePauliOp):
         """Set the cost operator.
-        
+
         This property setter computes some internal variables that help speed-up the computation
         of the energy for each sample `x`.
         """
@@ -106,7 +118,14 @@ class SampleEvaluator(BaseEvaluator):
         return tot_energy
 
     # pylint: disable=too-many-positional-arguments
-    def evaluate(self, cost_op, params, mixer=None, initial_state=None, ansatz_circuit=None):
+    def evaluate(
+        self,
+        cost_op: SparsePauliOp,
+        params: list,
+        mixer: QuantumCircuit | None = None,
+        initial_state: QuantumCircuit | None = None,
+        ansatz_circuit: QuantumCircuit | None = None,
+    ):
         """Evaluate the energy."""
 
         if isinstance(ansatz_circuit, SparsePauliOp):
