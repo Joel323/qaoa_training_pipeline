@@ -50,7 +50,7 @@ class TestSampleEvaluator(TestCase):
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=ansatz_op)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
-        self.assertTrue(abs(energy1 - energy2) > 0.02)
+        self.assertTrue(abs(energy1 - energy2) > 0.1)
 
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=self.cost_op)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
