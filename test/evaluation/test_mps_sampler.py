@@ -39,7 +39,7 @@ class TestSampleEvaluator(TestCase):
         angles = [0.1, 0.3]
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles)
         energy2 = self.qiskit_circuit_simulation(self.cost_op, angles)
-        self.assertTrue(abs(energy1 - energy2) < 0.1)
+        self.assertTrue(abs(energy1 - energy2) < 0.02)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
@@ -50,9 +50,9 @@ class TestSampleEvaluator(TestCase):
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=ansatz_op)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
-        self.assertTrue(abs(energy1 - energy2) > 0.1)
+        self.assertTrue(abs(energy1 - energy2) > 0.02)
 
         energy1 = self.evaluator.evaluate(self.cost_op, params=angles, ansatz_circuit=self.cost_op)
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
-        self.assertTrue(abs(energy1 - energy2) < 0.1)
+        self.assertTrue(abs(energy1 - energy2) < 0.02)
