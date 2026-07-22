@@ -335,9 +335,9 @@ class DepthOneGammaScanTrainer(DepthOneScanTrainer):
 
             qaoa_angles = [param1, param2]
             assert isinstance(
-                self._evaluator, BaseEvaluator
+                self.evaluator, BaseEvaluator
             ), "evaluator must be an initialized BaseEvaluator"
-            energy = self._evaluator.evaluate(
+            energy = self.evaluator.evaluate(
                 cost_op=cost_op,
                 params=qaoa_angles,
                 mixer=None,
