@@ -198,6 +198,8 @@ This repository is still in development: new functionality is being added and th
 |      38 | Introduce the framework module                               |          #72 |
 |      39 | Add framework imports in the main folder                     |          #73 |
 |      40 | Add FromConfigParamsProvider to set initial params.          |          #74 |
+|      41 | Implement new refactoring design in trainers.                |          #71 |
+|      42 | Add sampler-based MPS evaluator.                             |          #75 |
 
 ## IBM Public Repository Disclosure
 
