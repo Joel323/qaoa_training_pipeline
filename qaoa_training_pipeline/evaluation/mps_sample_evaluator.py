@@ -1,6 +1,6 @@
 #
 #
-# (C) Copyright IBM 2025.
+# (C) Copyright IBM 2026.
 #
 # Any modifications or derivative works of this code must retain this
 # copyright notice, and modified files need to carry a notice indicating
@@ -20,9 +20,11 @@ from qaoa_training_pipeline.evaluation.base_evaluator import BaseEvaluator
 
 
 class SampleEvaluator(BaseEvaluator):
-    """
-    Evaluator that retrieves an approximate value for the energy from
-    samples extracted from the MPS.
+    """Approximate the energy by sampling from a MPS.
+    
+    This MPS-based energy evaluator does not contract the MPS to compute the value of
+    an observable. Instead, we draw samples `x` from the MPS and then evaluate the energy
+    of the observable for each sample. 
     """
 
     def __init__(self, chi=None, max_parallel_threads=None, shots=None):
@@ -54,7 +56,11 @@ class SampleEvaluator(BaseEvaluator):
 
     @cost_op.setter
     def cost_op(self, cost_op):
-        """Sets the cost operator"""
+        """Set the cost operator.
+        
+        This property setter computes some internal variables that help speed-up the computation
+        of the energy for each sample `x`.
+        """
         self._cost_op = cost_op
         self._reals = []
         self._ainds = []
@@ -66,7 +72,7 @@ class SampleEvaluator(BaseEvaluator):
 
         self._init_time = time.time() - start
 
-    def energy(self, sample):
+    def energy(self, sample: str) -> float:
         """Computes the energy for a given sample"""
         sample = [val == "1" for val in sample[::-1]]
 
@@ -88,8 +94,8 @@ class SampleEvaluator(BaseEvaluator):
 
         return energy
 
-    def total_energy(self, counts: dict):
-        """Compute the energy of th counts."""
+    def total_energy(self, counts: dict) -> float:
+        """Compute the energy of the counts."""
         tot_energy = 0
         self.energies = []
         shots = sum(counts.values())
@@ -122,7 +128,6 @@ class SampleEvaluator(BaseEvaluator):
             reps=len(params) // 2,
         ).decompose()
 
-        ansatz.count_ops()
         ansatz.measure_all()
 
         pub = (ansatz, params, self._shots)
@@ -143,8 +148,8 @@ class SampleEvaluator(BaseEvaluator):
 
         return config
 
-    def cvar(self, energies, alpha=1.00):
-        """Compute the CVar for given energies"""
+    def cvar(self, energies: list, alpha=1.00) -> float:
+        """Compute the CVaR for given energies."""
         sorted_energies = sorted(energies)
         end_idx = max(int(alpha * len(energies)), 1)
 
