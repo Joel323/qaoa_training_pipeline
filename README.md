@@ -197,6 +197,7 @@ This repository is still in development: new functionality is being added and th
 |      37 | Refactoring: Add parameter providers and pipeline components |          #66 |
 |      38 | Introduce the framework module                               |          #72 |
 |      39 | Add framework imports in the main folder                     |          #73 |
+|      40 | Add FromConfigParamsProvider to set initial params.          |          #74 |
 
 ## IBM Public Repository Disclosure
 
