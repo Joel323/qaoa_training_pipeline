@@ -162,10 +162,16 @@ class SampleEvaluator(BaseEvaluator):
 
     def to_config(self):
         config = super().to_config()
-        config["chi"] = (self.chi,)
-        config["max_parallel_threads"] = (self.max_parallel_threads,)
+        config["chi"] = self.chi
+        config["max_parallel_threads"] = self.max_parallel_threads
+        config["shots"] = self._shots
 
         return config
+
+    @classmethod
+    def from_config(cls, config: dict) -> "SampleEvaluator":
+        """Initialize the evaluator from a configuration dictionary."""
+        return cls(**config)
 
     def cvar(self, energies: list, alpha=1.00) -> float:
         """Compute the CVaR for given energies."""
