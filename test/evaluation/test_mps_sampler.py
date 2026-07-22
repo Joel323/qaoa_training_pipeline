@@ -56,3 +56,21 @@ class TestSampleEvaluator(TestCase):
         energy2 = self.evaluator.evaluate(self.cost_op, params=angles)
 
         self.assertTrue(abs(energy1 - energy2) < 0.05)
+
+    def test_from_config(self):
+        config = {"chi": 32, "max_parallel_threads": 10, "shots": 10000}
+        evaluator = SampleEvaluator.from_config(config)
+
+        self.assertIsInstance(evaluator, SampleEvaluator)
+        angles = [0.1, 0.3]
+        energy1 = self.evaluator.evaluate(self.cost_op, params=angles)
+        energy2 = evaluator.evaluate(self.cost_op, params=angles)
+        self.assertTrue(abs(energy1 - energy2) < 0.05)
+
+    def test_to_config(self):
+        config = self.evaluator.to_config()
+        self.assertIsInstance(config, dict)
+        self.assertEqual(
+            config,
+            {"name": "SampleEvaluator", "chi": 32, "max_parallel_threads": 10, "shots": 10000},
+        )
