@@ -16,7 +16,8 @@ from qaoa_training_pipeline.evaluation.efficient_depth_one import (
 from qaoa_training_pipeline.training.reweighting import ReweightingTrainer
 from qaoa_training_pipeline.training.scipy_trainer import ScipyTrainer
 from qaoa_training_pipeline.utils.graph_utils import graph_to_operator
-from test import TrainingPipelineTestCase
+
+from ..training_pipeline_test_case import TrainingPipelineTestCase
 
 
 class TestReweightedTrainer(TrainingPipelineTestCase):
