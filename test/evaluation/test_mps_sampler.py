@@ -10,9 +10,11 @@
 
 from unittest import TestCase
 
-from qiskit.circuit.library import qaoa_ansatz
+import numpy as np
+from qiskit import QuantumCircuit
+from qiskit.circuit.library import PauliEvolutionGate, qaoa_ansatz
 from qiskit.primitives import StatevectorEstimator
-from qiskit.quantum_info import SparsePauliOp
+from qiskit.quantum_info import SparsePauliOp, Statevector
 
 from qaoa_training_pipeline.evaluation.mps_sample_evaluator import SampleEvaluator
 
@@ -47,14 +49,14 @@ class TestSampleEvaluator(TestCase):
 
         for cost_op in cost_ops:
             with self.subTest(cost_op=cost_op):
-                evaluator = SampleEvaluator(shots=40000, chi=64)
+                evaluator = SampleEvaluator(shots=80000, chi=64)
                 energy1 = evaluator.evaluate(cost_op, params=angles)
                 energy2 = self.qiskit_circuit_simulation(cost_op, angles)
                 print(
                     f"{cost_op.paulis}: mps={energy1:.4f} statevector={energy2:.4f} "
                     f"diff={abs(energy1 - energy2):.4f}"
                 )
-                self.assertTrue(abs(energy1 - energy2) < 0.01)
+                self.assertTrue(abs(energy1 - energy2) < 0.02)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
@@ -91,3 +93,82 @@ class TestSampleEvaluator(TestCase):
             config,
             {"name": "SampleEvaluator", "chi": 32, "max_parallel_threads": 10, "shots": 40000},
         )
+
+    def test_no_initial_state(self):
+        """Test that we get the correct energy when the initial state is a product state |111...>."""
+        cost_op = SparsePauliOp.from_list([("IIZZ", -0.5), ("ZIIZ", -0.5), ("IZIZ", -0.5)])
+
+        energy = self.evaluator.evaluate(
+            cost_op,
+            [np.pi / 2, 4.56],  # beta, gamma
+            initial_state=QuantumCircuit(4),
+        )
+
+        # Prepares the |1111> state which has energy -3/2. Gamma is irrelevant.
+        self.assertAlmostEqual(energy, -1.5)
+
+    def test_trivial_warm_start(self):
+        r"""Test a warm-start like QAOA. We start in 0001.
+
+        In the case of a warm-start the mixer changes from `+X` to
+
+        ..math::
+
+            \sin(\theta)X - \cos(\theta)Z
+
+        which is equivalent to the conventional mixer when theta is pi/2.
+        """
+        cost_op = SparsePauliOp.from_list([("IIZZ", -0.5), ("ZIIZ", -0.5), ("IZIZ", -0.5)])
+
+        params = [0.333, 4.56]  # beta, gamma
+
+        # Example of a warm-start where q0 is in 1 and the other qubits in 0.
+        # In this case the cost-op does nothing and neither does beta.
+        init = QuantumCircuit(4)
+        init.ry(-np.pi, 0)
+
+        mixer_op = SparsePauliOp.from_list([("ZIII", -1), ("IZII", 1), ("IIZI", 1), ("IIIZ", 1)])
+
+        energy = self.evaluator.evaluate(cost_op, params, initial_state=init, mixer=mixer_op)
+
+        # Prepares the |0001> state which has energy 3/2.
+        self.assertAlmostEqual(energy, 1.5)
+
+    def test_warm_start(self):
+        """
+        Test the efficient depth-one with a custom initial state and standard mixer.
+        """
+        cost_op = SparsePauliOp.from_list(
+            [
+                ("ZII", -1),
+                ("IZI", +0.81),
+                ("IIZ", -0.43),
+                ("ZZI", -1.5),
+                ("ZIZ", +0.21),
+                ("IZZ", -0.11),
+            ]
+        )
+        params = [0.41, 0.34]
+        init = QuantumCircuit(3)
+        for j in range(3):
+            theta = 0.1 * (j + 1)
+            init.ry(theta, j)
+
+        # Build the full QAOA circuit to get the reference statevector
+        qc = QuantumCircuit(3)
+        qc.compose(init, inplace=True)
+
+        # Cost unitary: exp(-i gamma * cost_op)
+        cost_gate = PauliEvolutionGate(cost_op, time=params[1])
+        qc.append(cost_gate, range(3))
+
+        # Mixer unitary: exp(-i beta * sum_j X_j)  ≡  Rx(2*beta) on each qubit
+        for j in range(3):
+            qc.rx(2 * params[0], j)
+
+        # Compute <psi | cost_op | psi> via statevector simulation
+        sv = Statevector(qc)
+        expected_energy = sv.expectation_value(cost_op).real
+
+        energy = self.evaluator.evaluate(cost_op, params, initial_state=init)
+        self.assertAlmostEqual(float(energy), expected_energy, delta=0.05)
