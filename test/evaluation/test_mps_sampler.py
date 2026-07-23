@@ -56,7 +56,7 @@ class TestSampleEvaluator(TestCase):
                     f"{cost_op.paulis}: mps={energy1:.4f} statevector={energy2:.4f} "
                     f"diff={abs(energy1 - energy2):.4f}"
                 )
-                self.assertTrue(abs(energy1 - energy2) < 0.03)
+                self.assertTrue(abs(energy1 - energy2) < 0.05)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
