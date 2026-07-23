@@ -23,7 +23,7 @@ class TestSampleEvaluator(TestCase):
     def setUp(self):
         """Setup the variables."""
         self.cost_op = SparsePauliOp.from_list([("II", 1.0), ("IZ", 1.0), ("ZZ", 1.0)])
-        self.evaluator = SampleEvaluator(shots=10000, chi=32)
+        self.evaluator = SampleEvaluator(shots=40000, chi=32)
 
     def qiskit_circuit_simulation(self, cost_op, params):
         """This is the baseline simulation based on Qiskit."""
@@ -47,10 +47,14 @@ class TestSampleEvaluator(TestCase):
 
         for cost_op in cost_ops:
             with self.subTest(cost_op=cost_op):
-                evaluator = SampleEvaluator(shots=10000, chi=32)
+                evaluator = SampleEvaluator(shots=40000, chi=64)
                 energy1 = evaluator.evaluate(cost_op, params=angles)
                 energy2 = self.qiskit_circuit_simulation(cost_op, angles)
-                self.assertTrue(abs(energy1 - energy2) < 0.08)
+                print(
+                    f"{cost_op.paulis}: mps={energy1:.4f} statevector={energy2:.4f} "
+                    f"diff={abs(energy1 - energy2):.4f}"
+                )
+                self.assertTrue(abs(energy1 - energy2) < 0.01)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
@@ -70,7 +74,7 @@ class TestSampleEvaluator(TestCase):
 
     def test_from_config(self):
         """Test that we can create the evaluator from a config dictionary"""
-        config = {"chi": 32, "max_parallel_threads": 10, "shots": 10000}
+        config = {"chi": 32, "max_parallel_threads": 10, "shots": 40000}
         evaluator = SampleEvaluator.from_config(config)
 
         self.assertIsInstance(evaluator, SampleEvaluator)
@@ -85,5 +89,5 @@ class TestSampleEvaluator(TestCase):
         self.assertIsInstance(config, dict)
         self.assertEqual(
             config,
-            {"name": "SampleEvaluator", "chi": 32, "max_parallel_threads": 10, "shots": 10000},
+            {"name": "SampleEvaluator", "chi": 32, "max_parallel_threads": 10, "shots": 40000},
         )
