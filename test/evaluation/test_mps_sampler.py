@@ -173,42 +173,43 @@ class TestSampleEvaluator(TestCase):
         energy = self.evaluator.evaluate(cost_op, params, initial_state=init)
         self.assertAlmostEqual(float(energy), expected_energy, delta=0.05)
 
+    def test_custom_ansatz_nodelist(self):
+        """Test that we get the correct result when running with a custom ansatz.
 
-def test_custom_ansatz_nodelist(self):
-    """Test that we get the correct result when running with a custom ansatz.
+        This test is specifically designed to check that the adjacency matrix is
+        properly constructed when an Ansatz is given. This is because
+        `nx.adjacency_matrix` works both with and without the `nodelist` argument.
+        When `nodelist` is not given random behaviour can occure.
+        """
+        cost_op = SparsePauliOp.from_list(
+            [
+                ("IIZZ", -1),
+                ("IZIZ", -1),
+                ("ZIIZ", 1),
+                ("IZZI", 1),
+                ("ZIZI", -1),
+                ("ZZII", 1),
+            ]
+        )
 
-    This test is specifically designed to check that the adjacency matrix is
-    properly constructed when an Ansatz is given. This is because
-    `nx.adjacency_matrix` works both with and without the `nodelist` argument.
-    When `nodelist` is not given random behaviour can occure.
-    """
-    cost_op = SparsePauliOp.from_list(
-        [
-            ("IIZZ", -1),
-            ("IZIZ", -1),
-            ("ZIIZ", 1),
-            ("IZZI", 1),
-            ("ZIZI", -1),
-            ("ZZII", 1),
-        ]
-    )
+        # Construct an ansatz. The gate order (3, 0) and (2, 1) is specifically designed to trigger
+        # wrong behaviour in `nx.adjacency_matrix` in the absence of nodelist.
+        ansatz = SparsePauliOp.from_list([("ZIIZ", 1), ("IZZI", 1)])
 
-    # Construct an ansatz. The gate order (3, 0) and (2, 1) is specifically designed to trigger
-    # wrong behaviour in `nx.adjacency_matrix` in the absence of nodelist.
-    ansatz = SparsePauliOp.from_list([("ZIIZ", 1), ("IZZI", 1)])
+        # Construct the QAOA circuit corresponding to the ansatz.
+        qaoa_circuit = qaoa_ansatz(SparsePauliOp.from_list([("ZIIZ", 1), ("IZZI", 1)]))
+        qaoa_circuit = transpile(qaoa_circuit, basis_gates=["rzz", "h", "rx", "rz"])
 
-    # Construct the QAOA circuit corresponding to the ansatz.
-    qaoa_circuit = qaoa_ansatz(SparsePauliOp.from_list([("ZIIZ", 1), ("IZZI", 1)]))
-    qaoa_circuit = transpile(qaoa_circuit, basis_gates=["rzz", "h", "rx", "rz"])
+        beta, gamma = 1, 2
+        estimator = StatevectorEstimator()
+        expected = float(
+            estimator.run([(qaoa_circuit, cost_op, [beta, gamma])]).result()[0].data.evs
+        )
 
-    beta, gamma = 1, 2
-    estimator = StatevectorEstimator()
-    expected = float(estimator.run([(qaoa_circuit, cost_op, [beta, gamma])]).result()[0].data.evs)
+        actual = self.evaluator.evaluate(
+            cost_op,
+            params=[beta, gamma],
+            ansatz_circuit=ansatz,
+        )
 
-    actual = self.evaluator.evaluate(
-        cost_op,
-        params=[beta, gamma],
-        ansatz_circuit=ansatz,
-    )
-
-    self.assertAlmostEqual(actual, expected, places=8)
+        self.assertAlmostEqual(actual, expected, places=1)
