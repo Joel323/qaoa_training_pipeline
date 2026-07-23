@@ -54,7 +54,6 @@ class SampleEvaluator(BaseEvaluator):
             matrix_product_state_max_bond_dimension=self.chi,
             max_parallel_threads=self.max_parallel_threads,
         )
-        self._backend.options.use_fractional_gates = False
 
         self._sampler = BackendSamplerV2(backend=self._backend)
 
@@ -90,19 +89,12 @@ class SampleEvaluator(BaseEvaluator):
 
         energy = 0
         for aidx, val in enumerate(self._reals):
-            if len(self._ainds[aidx]) == 1:
-                if sample[self._ainds[aidx][0]]:
-                    energy -= val
-                else:
-                    energy += val
-
-            if len(self._ainds[aidx]) == 2:
-                if sample[self._ainds[aidx][0]] == sample[self._ainds[aidx][1]]:
-                    energy += val
-                else:
-                    energy -= val
-            if len(self._ainds[aidx]) == 0:
-                energy += 1
+            selected_bits = [sample[idx] for idx in aidx]
+            
+            if sum(selected_bits) % 2 == 0:
+                energy += val
+            else:
+                energy -= val
 
         return energy
 
