@@ -89,7 +89,7 @@ class SampleEvaluator(BaseEvaluator):
 
         energy = 0
         for aidx, val in enumerate(self._reals):
-            selected_bits = [sample[idx] for idx in aidx]
+            selected_bits = [sample[idx] for idx in self._ainds[aidx]]
 
             if sum(selected_bits) % 2 == 0:
                 energy += val
