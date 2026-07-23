@@ -46,10 +46,11 @@ class TestSampleEvaluator(TestCase):
         ]
 
         for cost_op in cost_ops:
-            evaluator = SampleEvaluator(shots=10000, chi=32)
-            energy1 = evaluator.evaluate(cost_op, params=angles)
-            energy2 = self.qiskit_circuit_simulation(cost_op, angles)
-            self.assertTrue(abs(energy1 - energy2) < 0.05)
+            with self.subTest(cost_op=cost_op):
+                evaluator = SampleEvaluator(shots=10000, chi=32)
+                energy1 = evaluator.evaluate(cost_op, params=angles)
+                energy2 = self.qiskit_circuit_simulation(cost_op, angles)
+                self.assertTrue(abs(energy1 - energy2) < 0.05)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
