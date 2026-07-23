@@ -132,7 +132,7 @@ class SampleEvaluator(BaseEvaluator):
         # Set the cost op. We do not validate that the existing cost op,
         # if present, is the same as the given cost op.
         if self._cost_op is None:
-            self.cost_op = ansatz_op
+            self.cost_op = cost_op
 
         ansatz = qaoa_ansatz(
             cost_operator=ansatz_op,
