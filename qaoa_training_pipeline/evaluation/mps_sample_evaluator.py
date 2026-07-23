@@ -137,6 +137,8 @@ class SampleEvaluator(BaseEvaluator):
         ansatz = qaoa_ansatz(
             cost_operator=ansatz_op,
             reps=len(params) // 2,
+            initial_state=initial_state,
+            mixer_operator=mixer,
         ).decompose()
 
         ansatz.measure_all()
