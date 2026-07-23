@@ -35,11 +35,21 @@ class TestSampleEvaluator(TestCase):
         return float(result[0].data.evs)
 
     def test_evaluate(self):
-        """Basic test of the evaluator."""
+        """Basic test of the evaluator against different cost operators."""
         angles = [0.1, 0.3]
-        energy1 = self.evaluator.evaluate(self.cost_op, params=angles)
-        energy2 = self.qiskit_circuit_simulation(self.cost_op, angles)
-        self.assertTrue(abs(energy1 - energy2) < 0.05)
+
+        cost_ops = [
+            SparsePauliOp.from_list([("II", 1.0), ("IZ", 1.0), ("ZZ", 1.0)]),
+            SparsePauliOp.from_list([("IZZ", 2.0), ("ZIZ", 3), ("ZZZ", 4)]),
+            SparsePauliOp.from_list([("ZZZ", 1.0)]),
+            SparsePauliOp.from_list([("Z", 2)]),
+        ]
+
+        for cost_op in cost_ops:
+            evaluator = SampleEvaluator(shots=10000, chi=32)
+            energy1 = evaluator.evaluate(cost_op, params=angles)
+            energy2 = self.qiskit_circuit_simulation(cost_op, angles)
+            self.assertTrue(abs(energy1 - energy2) < 0.05)
 
     def test_custom_ansatz(self):
         """Test that we can construct the ansatz from a different operator."""
