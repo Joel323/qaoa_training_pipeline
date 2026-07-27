@@ -9,23 +9,21 @@
 
 from abc import ABC, abstractmethod
 from collections import defaultdict
-from typing import Optional, List, Tuple
-
 from math import sqrt
+from typing import List, Optional, Tuple
 
-from networkx import Graph
 import numpy as np
-
+from networkx import Graph
+from qiskit import QuantumCircuit
+from qiskit.transpiler.passes.routing.commuting_2q_gate_routing import SwapStrategy
 from quimb.tensor import CircuitMPS, MatrixProductState, tensor_network_gate_inds
 from quimb.tensor.circuit import parse_to_gate
 
-from qiskit import QuantumCircuit
-from qiskit.transpiler.passes.routing.commuting_2q_gate_routing import SwapStrategy
-
 from qaoa_training_pipeline.utils.circuit_utils import split_circuit
-from .qaoa_cost_function import QAOACostFunction
+
 from .circuit_mps_vidal import CircuitMPSVidalCanonization
 from .multi_qubit_gates import QAOAManyBodyCorrelator
+from .qaoa_cost_function import QAOACostFunction
 
 
 class QAOACircuitTNSRepresentation(ABC):
@@ -514,7 +512,7 @@ class QAOACircuitMPSRepresentation(QAOACircuitTNSRepresentation):
             for i_qubit in range(self._n_qubits):
                 self._mps_representation.apply_gate("RX", 2.0 * scaling_factor, i_qubit)
 
-        self._canonization_center = self.n_qubits - 1
+        # self._canonization_center = self.n_qubits - 1
 
     def _apply_one_local(self, scaling_factor: float):
         """Internal helper function to apply one-local terms from the Ansatz."""
