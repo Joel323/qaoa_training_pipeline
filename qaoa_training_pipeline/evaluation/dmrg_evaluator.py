@@ -110,7 +110,12 @@ class DMRGStyleEvaluator:
     """
 
     def __init__(
-        self, max_bond, gates_per_block=1, method="fit", swap_strategy=None, **compress_opts
+        self,
+        max_bond,
+        gates_per_block=1,
+        method="fit",
+        swap_strategy=None,
+        **compress_opts,
     ):
         self.max_bond = max_bond
         self.gates_per_block = gates_per_block
@@ -131,7 +136,9 @@ class DMRGStyleEvaluator:
             [tuple(edge[0]) for edge in edges], n_qubits
         )
 
-        circuit = _BlockCompressingCircuit.construct_from_list_of_edges(
+        circuit_cls = _BlockCompressingCircuit
+
+        circuit = circuit_cls.construct_from_list_of_edges(
             edges,
             truncation_threshold=None,
             max_bond_dim=None,
