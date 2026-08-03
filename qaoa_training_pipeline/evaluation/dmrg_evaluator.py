@@ -6,9 +6,11 @@
 # copyright notice, and modified files need to carry a notice indicating
 # that they have been altered from the originals.
 
+"""Class implementing a DMRG-style MPS"""
 
 import numpy as np
 import quimb.tensor as qtn
+from qiskit import QuantumCircuit
 from quimb.tensor import CircuitMPS
 
 from qaoa_training_pipeline.utils.graph_utils import (
@@ -22,13 +24,55 @@ from qaoa_training_pipeline.utils.tns_utils.qaoa_cost_function import QAOACostFu
 
 
 class _BlockCompressingCircuit(QAOACircuitMPSRepresentation):
-    """Inherits from QAOACircuitMPSRepresentation and applies the same logic, but recompresses
-    to a fixed bond dimension every `gates_per_block` individual two-qubit gate applications.
+    """Same as QAOACircuitMPSRepresentation, but recompresses to a fixed bond dimension every
+    `gates_per_block` individual two-qubit gate applications (RZZ or SWAP), instead of only
+    truncating (or not) at the end of a whole QAOA layer.
     """
 
-    # pylint: disable=too-many-positional-arguments
-    def configure_compression(self, max_bond, gates_per_block, method, site_tags, compress_opts):
-        self._compress_max_bond = max_bond
+    def __init__(
+        self,
+        edges,
+        growth_max_bond,
+        swap_strategy,
+        site_tags: tuple[str, ...],
+        compress_max_bond: int = 4,
+        gates_per_block: int = 280,
+        method: str = "fit",
+        truncation_threshold=None,
+        store_intermediate_schmidt_values=False,
+        mixer: QuantumCircuit | None = None,
+        initial_state: QuantumCircuit | None = None,
+        **compress_opts,
+    ):
+        """Configure internal variables controlling the compression of the MPS state"""
+        n_qubits = max(max(i[0]) for i in edges) + 1
+        adjacency_matrix = np.zeros((n_qubits, n_qubits), dtype=float)
+        list_of_higher_order_terms = []
+
+        # Loop over the edges and classify them
+        for i_edge in edges:
+            # First-order terms are in the diagonal of the adjacency matrix
+            if len(i_edge[0]) == 1:
+                adjacency_matrix[i_edge[0][0], i_edge[0][0]] = i_edge[1]
+            # Second-order edges
+            elif len(i_edge[0]) == 2:
+                adjacency_matrix[i_edge[0][0], i_edge[0][1]] = i_edge[1]
+                adjacency_matrix[i_edge[0][1], i_edge[0][0]] = i_edge[1]
+            else:
+                list_of_higher_order_terms.append(i_edge)
+
+        super().__init__(
+            n_qubits,
+            adjacency_matrix,
+            truncation_threshold,
+            growth_max_bond,
+            swap_strategy=swap_strategy,
+            list_of_hyperedges=list_of_higher_order_terms,
+            mixer=mixer,
+            initial_state=initial_state,
+            store_intermediate_schmidt_values=store_intermediate_schmidt_values,
+        )
+        self._compress_max_bond = compress_max_bond
         self._compress_block = gates_per_block
         self._compress_method = method
         self._site_tags = site_tags
@@ -40,7 +84,6 @@ class _BlockCompressingCircuit(QAOACircuitMPSRepresentation):
         self._gate_count += 1
         if self._gate_count % self._compress_block == 0:
             if self._compress_method == "dm":
-                # Plain SVD-based block compression -- no ALS-specific options apply here.
                 psi = qtn.tensor_network_1d_compress(
                     self.get_underlying_tn(),
                     max_bond=self._compress_max_bond,
@@ -48,12 +91,7 @@ class _BlockCompressingCircuit(QAOACircuitMPSRepresentation):
                     site_tags=self._site_tags,
                     **self._compress_opts,
                 )
-            else:
-                # "fit" -> warm-started (zip-up/TEBD-like guess) single-site ALS sweep, matching
-                # the paper's recommended initialization strategy discussed above. `cutoff` is
-                # for building that initial guess; `cutoff_fit` (0, i.e. no truncation) is for
-                # the ALS sweep itself, which is only meaningful with method="fit-zipup" (the
-                # plain "fit" method does not accept `cutoff_fit` at all).
+            elif self._compress_method == "fit-zipup":
                 psi = qtn.tensor_network_1d_compress(
                     self.get_underlying_tn(),
                     max_bond=self._compress_max_bond,
@@ -68,20 +106,9 @@ class _BlockCompressingCircuit(QAOACircuitMPSRepresentation):
                     site_tags=self._site_tags,
                     **self._compress_opts,
                 )
+            else:
+                raise ValueError(f"{self._compress_method} is not supported")
 
-            # `_apply_two_qubit_gate` (the parent class) assumes the MPS it's handed has the
-            # same index-naming/axis conventions a natively-built CircuitMPS has (e.g. it looks
-            # up bonds positionally via `psi.inner_inds()[i]`). tensor_network_1d_compress's
-            # output does not reliably satisfy this -- its inner_inds() come back in an
-            # unrelated order, and even after fixing that ordering (via the position-based
-            # `.bond(i, i+1)`, not insertion-order-based `inner_inds()`), the parent's internal
-            # `shift_orthogonality_center` call can still misbehave on it, causing a *different*
-            # tensor/bond to be produced than what `_apply_two_qubit_gate` expects -- surfacing
-            # as a `KeyError` on `info[("singular_values", ...)]` a gate or more later. The
-            # robust fix is to not reuse tensor_network_1d_compress's internal representation at
-            # all: extract the raw site arrays (in the correct leg order) and rebuild a brand
-            # new `MatrixProductState` from scratch, which goes through the same construction
-            # path as any natively-built MPS and so is guaranteed to satisfy those assumptions.
             arrays = []
             for i, tag in enumerate(self._site_tags):
                 tensor = psi[tag]
@@ -111,43 +138,46 @@ class DMRGStyleEvaluator:
 
     def __init__(
         self,
-        max_bond,
+        compress_max_bond,
+        growth_max_bond=None,
         gates_per_block=1,
-        method="fit",
+        method="fit-zipup",
         swap_strategy=None,
         **compress_opts,
     ):
-        self.max_bond = max_bond
+        self.compress_max_bond = compress_max_bond
+        self.growth_max_bond = growth_max_bond
         self.gates_per_block = gates_per_block
         self.method = method
-        self.swap_strategy = swap_strategy
         self.compress_opts = compress_opts
+        self.swap_strategy = swap_strategy
 
     def evaluate(self, cost_op, params) -> float:
+        """Provides energy evaluation coming from contraction of the MPS obtained by using the DMRG-style algorithm"""
         n_qubits = cost_op.num_qubits
         edges = operator_to_list_of_hyper_edges(cost_op)
         if any(len(edge[0]) != 2 for edge in edges):
             raise NotImplementedError("Prototype only supports quadratic (edge) cost operators.")
 
+        self.swap_strategy = self.swap_strategy or make_swap_strategy(
+            [tuple(edge[0]) for edge in edges], n_qubits
+        )
+        site_tags = tuple(f"I{i}" for i in range(n_qubits))
+        circuit = _BlockCompressingCircuit(
+            edges=edges,
+            growth_max_bond=self.growth_max_bond,
+            swap_strategy=self.swap_strategy,
+            site_tags=site_tags,
+            compress_max_bond=self.compress_max_bond,
+            gates_per_block=self.gates_per_block,
+            method=self.method,
+            truncation_threshold=None,
+            store_intermediate_schmidt_values=False,
+        )
+
         depth = len(params) // 2
         betas, gammas = params[:depth], params[depth:]
 
-        swap_strategy = self.swap_strategy or make_swap_strategy(
-            [tuple(edge[0]) for edge in edges], n_qubits
-        )
-
-        circuit_cls = _BlockCompressingCircuit
-
-        circuit = circuit_cls.construct_from_list_of_edges(
-            edges,
-            truncation_threshold=None,
-            max_bond_dim=None,
-            swap_strategy=swap_strategy,
-        )
-        site_tags = tuple(f"I{i}" for i in range(n_qubits))
-        circuit.configure_compression(
-            self.max_bond, self.gates_per_block, self.method, site_tags, self.compress_opts
-        )
         circuit._apply_initial_layer()
 
         rep = 1
@@ -159,7 +189,7 @@ class DMRGStyleEvaluator:
         # Same net-permutation correction MPSEvaluator applies for use_swap_strategy=True.
         eval_cost_op = cost_op
         if depth % 2 == 1:
-            inv_perm = swap_strategy.inverse_composed_permutation(len(swap_strategy))
+            inv_perm = self.swap_strategy.inverse_composed_permutation(len(self.swap_strategy))
             permutation = [inv_perm.index(idx) for idx in range(len(inv_perm))]
             eval_cost_op = cost_op.apply_layout(permutation)
 
@@ -167,7 +197,12 @@ class DMRGStyleEvaluator:
         mpo = cost_function.mpo.mpo
         psi = circuit.get_underlying_tn()
         psi_dagger = psi.H
+        assert mpo.lower_inds is not None and mpo.upper_inds is not None
         psi_dagger.reindex_(dict(zip(mpo.lower_inds, mpo.upper_inds)))
         network = psi_dagger & mpo & psi
-        energy = network.contract(..., optimize="auto-hq") / psi.norm() ** 2
+        raw = network.contract(tags=..., optimize="auto-hq")
+        assert isinstance(raw, (float, complex))
+        norm = psi.norm()
+        assert isinstance(norm, (float, complex))
+        energy = raw / norm**2
         return float(np.real(energy))
